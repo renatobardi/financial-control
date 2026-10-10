@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bloco_lazy %}
+{% block titulo %}{{ t("pessoas.titulo") }}{% endblock %}
+{% block corpo %}
+<header class="flex items-center justify-between border-b border-border px-6 py-3">
+  <a href="/" class="font-semibold">{{ t("configuracoes.voltar") }}</a>
+  <span class="text-muted-foreground">{{ t("inicio.bd_papel", bd=bd_nome, papel=papel) }}</span>
+</header>
+<main class="mx-auto flex max-w-6xl flex-col gap-4 p-6">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">{{ t("pessoas.titulo") }}</h1>
+    <p class="text-muted-foreground">{{ t("pessoas.sub") }}</p>
+  </div>
+  {{ bloco_lazy("/pessoas/lista?de=" ~ de ~ "&ate=" ~ ate ~ "&unidade=" ~ unidade ~ "&busca=" ~ (busca|urlencode), gatilho="load", altura="h-64") }}
+</main>
+{% endblock %}

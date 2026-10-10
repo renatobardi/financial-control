@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bloco_lazy %}
+{% block titulo %}{{ t("compras.editar_titulo") }}{% endblock %}
+{% block corpo %}
+<header class="flex items-center justify-between border-b border-border px-6 py-3">
+  <a href="/compras" class="font-semibold">{{ t("compras.voltar") }}</a>
+  <span class="text-muted-foreground">{{ t("inicio.bd_papel", bd=bd_nome, papel=papel) }}</span>
+</header>
+<main class="mx-auto flex max-w-4xl flex-col gap-4 p-6">
+  <h1 class="text-xl font-semibold tracking-tight">{{ t("compras.editar_titulo") }}</h1>
+  {{ bloco_lazy("/compras/" ~ compra_id ~ "/detalhe", gatilho="load", altura="h-64") }}
+</main>
+{% endblock %}

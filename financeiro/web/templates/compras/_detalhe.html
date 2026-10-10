@@ -1,0 +1,89 @@
+<div id="ordem" class="flex flex-col gap-4">
+  {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
+  {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+  {% if not pode_editar %}
+  <p class="rounded-xl bg-muted px-3 py-2 text-muted-foreground">{{ t("compras.somente_leitura") }}</p>
+  {% endif %}
+
+  <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
+    <h2 class="mb-3 font-semibold">{{ t("compras.col_numero") }}: {{ t("compras.sem_numero") if ordem.sem_numero else ordem.numero }} · {{ ordem.tipo }}
+      · {{ t("compras.status_" ~ ordem.status) }}</h2>
+    {% if pode_editar and ordem.status != "cancelada" %}
+    <form method="post" action="/compras/{{ ordem.id }}" hx-post="/compras/{{ ordem.id }}" hx-target="#ordem" hx-swap="outerHTML"
+          class="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label class="flex flex-col gap-1 text-xs font-medium">{{ t("compras.c_numero") }}
+        <input name="numero" value="{{ '' if ordem.sem_numero else ordem.numero }}" class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+      <label class="flex flex-col gap-1 text-xs font-medium">{{ t("compras.c_fornecedor") }}
+        <select name="fornecedor_id" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+          <option value="">{{ t("compras.a_definir") }}</option>
+          {% for f in fornecedores %}<option value="{{ f.id }}" {{ "selected" if ordem.fornecedor_id == f.id }}>{{ f.nome }}</option>{% endfor %}
+        </select></label>
+      <label class="flex flex-col gap-1 text-xs font-medium">{{ t("compras.c_demanda") }}
+        <select name="demanda_id" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+          {% for d in demandas %}<option value="{{ d.id }}" {{ "selected" if ordem.demanda_id == d.id }}>{{ d.codigo }} · {{ d.nome }}</option>{% endfor %}
+        </select></label>
+      <label class="flex flex-col gap-1 text-xs font-medium">{{ t("compras.c_status") }}
+        <select name="status" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+          {% for s in status_opcoes %}<option value="{{ s }}" {{ "selected" if ordem.status == s }}>{{ t("compras.status_" ~ s) }}</option>{% endfor %}
+        </select></label>
+      <label class="flex grow flex-col gap-1 text-xs font-medium">{{ t("compras.c_descricao") }}
+        <input name="descricao" value="{{ ordem.descricao }}" class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+      <button type="submit" class="h-9 rounded-4xl bg-primary px-4 font-medium text-primary-foreground">{{ t("compras.salvar") }}</button>
+    </form>
+    {% else %}
+    <p>{{ ordem.fornecedor or t("compras.a_definir") }} · {{ ordem.demanda }} · {{ ordem.descricao }}</p>
+    {% endif %}
+  </section>
+
+  <section class="flex flex-col gap-2">
+    <h2 class="font-semibold">{{ t("compras.valores") }}</h2>
+    <p class="text-xs text-muted-foreground">{{ t("compras.valores_nota") }}</p>
+    <div class="overflow-x-auto rounded-2xl ring-1 ring-border">
+      <table class="w-full text-left">
+        <thead class="bg-muted text-muted-foreground"><tr>
+          <th class="px-3 py-2 font-medium">{{ t("compras.col_mes") }}</th>
+          <th class="px-3 py-2 font-medium">{{ t("compras.col_periodo") }}</th>
+          <th class="px-3 py-2 text-right font-medium">{{ t("compras.col_realizado_bruto") }}</th>
+          <th class="px-3 py-2 text-right font-medium">{{ t("compras.col_forecast_liquido") }}</th>
+          <th class="px-3 py-2 text-right font-medium">{{ t("compras.col_forecast_bruto") }}</th>
+        </tr></thead>
+        <tbody>
+          {% for m in meses %}
+          <tr class="border-t border-border">
+            <td class="px-3 py-2">{{ mes(m.mes[:4]|int, m.mes[5:]|int) }}</td>
+            <td class="px-3 py-2">{{ t("compras.periodo_realizado") if m.estado == "realizado" else t("compras.periodo_forecast") }}</td>
+            {% if m.estado == "realizado" %}
+            <td class="px-3 py-2 text-right">{{ moeda(m.bruto_centavos) }}</td>
+            <td class="px-3 py-2 text-right text-muted-foreground">—</td>
+            <td class="px-3 py-2 text-right text-muted-foreground">—</td>
+            {% else %}
+            <td class="px-3 py-2 text-right text-muted-foreground">—</td>
+            <td class="px-3 py-2 text-right">
+              {% if pode_editar and ordem.status != "cancelada" %}
+              <form method="post" action="/compras/{{ ordem.id }}/valores" hx-post="/compras/{{ ordem.id }}/valores"
+                    hx-target="#ordem" hx-swap="outerHTML" class="inline-flex items-center gap-2">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <input type="hidden" name="mes" value="{{ m.mes }}">
+                <input name="valor" value="{{ moeda(m.liquido_centavos)|replace('R$ ', '') }}" aria-label="{{ t('compras.col_forecast_liquido') }}"
+                       class="h-8 w-32 rounded-4xl border border-input bg-background px-3 text-right">
+                <button type="submit" class="rounded-4xl bg-secondary px-3 py-1 text-secondary-foreground">{{ t("compras.salvar_valor") }}</button>
+              </form>
+              {% else %}{{ moeda(m.liquido_centavos) }}{% endif %}
+            </td>
+            <td class="px-3 py-2 text-right">{{ moeda(m.bruto_centavos) }}</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-2">
+    <h2 class="font-semibold">{{ t("compras.historico") }}</h2>
+    <ul class="flex flex-col gap-1">
+      {% for h in historico %}<li class="rounded-xl bg-muted px-3 py-2">{{ data_hora(h.em) }} · {{ h.texto }}</li>{% endfor %}
+    </ul>
+  </section>
+</div>

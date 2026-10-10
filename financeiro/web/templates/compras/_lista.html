@@ -1,0 +1,73 @@
+<div id="compras" class="flex flex-col gap-4">
+  {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
+  {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+  {% if not pode_editar %}
+  <p class="rounded-xl bg-muted px-3 py-2 text-muted-foreground">{{ t("compras.somente_leitura") }}</p>
+  {% endif %}
+
+  <form method="get" action="/compras" hx-get="/compras/lista" hx-target="#compras" hx-swap="outerHTML"
+        class="flex flex-wrap items-end gap-3">
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("compras.ano") }}
+      <input name="ano" value="{{ ano }}" class="h-9 w-24 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("compras.buscar") }}
+      <input type="search" name="busca" value="{{ busca }}" class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("compras.status") }}
+      <select name="status" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        <option value="">{{ t("compras.todos_status") }}</option>
+        {% for s in status_opcoes %}<option value="{{ s }}" {{ "selected" if status_filtro == s }}>{{ t("compras.status_" ~ s) }}</option>{% endfor %}
+      </select></label>
+    <button type="submit" class="h-9 rounded-4xl bg-secondary px-4 font-medium text-secondary-foreground">{{ t("compras.aplicar") }}</button>
+  </form>
+
+  <dl class="grid grid-cols-3 gap-3">
+    {% for rotulo, valor in [("compras.kpi_realizado", moeda(realizado)), ("compras.kpi_forecast", moeda(forecast)), ("compras.kpi_previstas", previstas)] %}
+    <div class="rounded-xl bg-muted p-3"><dt class="text-xs text-muted-foreground">{{ t(rotulo) }}</dt><dd class="text-lg font-semibold">{{ valor }}</dd></div>
+    {% endfor %}
+  </dl>
+
+  <div class="overflow-x-auto rounded-2xl ring-1 ring-border">
+    <table class="w-full text-left">
+      <thead class="bg-muted text-muted-foreground"><tr>
+        {% for c in ["col_numero", "col_tipo", "col_fornecedor", "col_demanda", "col_status", "col_realizado", "col_forecast"] %}
+        <th class="px-3 py-2 font-medium">{{ t("compras." ~ c) }}</th>
+        {% endfor %}
+        <th class="px-3 py-2"></th>
+      </tr></thead>
+      <tbody>
+        {% for o in linhas %}
+        <tr class="border-t border-border">
+          <td class="px-3 py-2">{{ t("compras.sem_numero") if o.sem_numero else o.numero }}</td>
+          <td class="px-3 py-2">{{ o.tipo }}</td>
+          <td class="px-3 py-2">{{ o.fornecedor or t("compras.a_definir") }} · {{ o.descricao }}</td>
+          <td class="px-3 py-2">{{ o.demanda }}</td>
+          <td class="px-3 py-2">{{ t("compras.status_" ~ o.status) }}</td>
+          <td class="px-3 py-2 text-right">{{ moeda(o.realizado_centavos) }}</td>
+          <td class="px-3 py-2 text-right">{{ moeda(o.forecast_centavos) }}</td>
+          <td class="px-3 py-2"><a class="underline" href="/compras/{{ o.id }}">{{ t("compras.editar") }}</a></td>
+        </tr>
+        {% else %}
+        <tr><td class="px-3 py-4 text-muted-foreground" colspan="8">{{ t("compras.vazio") }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pode_editar %}
+  <form method="post" action="/compras" hx-post="/compras" hx-target="#compras" hx-swap="outerHTML"
+        class="flex flex-wrap items-end gap-3 rounded-2xl bg-card p-4 ring-1 ring-border">
+    <h2 class="w-full font-semibold">{{ t("compras.nova") }}</h2>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("compras.c_tipo") }}
+      <select name="tipo" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        {% for tp in tipos %}<option value="{{ tp }}">{{ tp }}</option>{% endfor %}
+      </select></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("compras.c_demanda") }}
+      <select name="demanda_id" required class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        {% for d in demandas %}<option value="{{ d.id }}">{{ d.codigo }} · {{ d.nome }}</option>{% endfor %}
+      </select></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("compras.c_descricao") }}
+      <input name="descricao" class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+    <button type="submit" class="h-9 rounded-4xl bg-primary px-4 font-medium text-primary-foreground">{{ t("compras.criar") }}</button>
+  </form>
+  {% endif %}
+</div>
