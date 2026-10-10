@@ -1,0 +1,944 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PainelFinanceiro",
+  "description": "Payload raiz do painel financeiro de uma unidade organizacional. Contrato versionado via meta.versaoContrato (atual: 3).",
+  "type": "object",
+  "required": [
+    "meta",
+    "orcamentoTotal",
+    "capacity",
+    "projetoFechado",
+    "capexOpex",
+    "headcount",
+    "historicoHeadcount",
+    "evolucaoMensal",
+    "rtb",
+    "gravity",
+    "consultorias",
+    "niveis",
+    "vagasAbertas",
+    "horasAcimaPrevisto",
+    "topTemasCtb",
+    "triboSquad",
+    "funcoes",
+    "iniciativas"
+  ],
+  "definitions": {
+    "PorMes": {
+      "type": "object",
+      "description": "Valor por mês, chaveado por abreviação ('Jan','Fev',...,'Dez').",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "BlocoOrcamento": {
+      "type": "object",
+      "required": [
+        "orcamento",
+        "realizado",
+        "forecast",
+        "totalAno",
+        "gap"
+      ],
+      "properties": {
+        "orcamento": {
+          "type": "number"
+        },
+        "realizado": {
+          "type": "number"
+        },
+        "forecast": {
+          "type": "number"
+        },
+        "totalAno": {
+          "type": "number"
+        },
+        "gap": {
+          "type": "number",
+          "description": "Positivo = saldo; negativo = estouro."
+        }
+      }
+    },
+    "PfPorTipo": {
+      "type": "object",
+      "required": [
+        "orcamento",
+        "realizado",
+        "saldo"
+      ],
+      "properties": {
+        "orcamento": {
+          "type": "number"
+        },
+        "realizado": {
+          "type": "number"
+        },
+        "saldo": {
+          "type": "number"
+        }
+      }
+    },
+    "LadoCapexOpex": {
+      "type": "object",
+      "required": [
+        "orcamento",
+        "orcamentoCapacity",
+        "orcamentoPf",
+        "consumo",
+        "consumoPessoas",
+        "consumoCompras",
+        "saldo"
+      ],
+      "properties": {
+        "orcamento": {
+          "type": "number"
+        },
+        "orcamentoCapacity": {
+          "type": "number"
+        },
+        "orcamentoPf": {
+          "type": "number"
+        },
+        "consumo": {
+          "type": "number"
+        },
+        "consumoPessoas": {
+          "type": "number"
+        },
+        "consumoCompras": {
+          "type": "number"
+        },
+        "saldo": {
+          "type": "number"
+        }
+      }
+    },
+    "Iniciativa": {
+      "type": "object",
+      "required": [
+        "nome",
+        "porMes",
+        "total",
+        "pct"
+      ],
+      "properties": {
+        "numero": {
+          "type": "string"
+        },
+        "nome": {
+          "type": "string"
+        },
+        "porMes": {
+          "$ref": "#/definitions/PorMes"
+        },
+        "total": {
+          "type": "number"
+        },
+        "pct": {
+          "type": "number"
+        },
+        "demandas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "numero",
+              "nome",
+              "porMes",
+              "total"
+            ],
+            "properties": {
+              "numero": {
+                "type": "string"
+              },
+              "nome": {
+                "type": "string"
+              },
+              "porMes": {
+                "$ref": "#/definitions/PorMes"
+              },
+              "total": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "gd",
+        "gdOrigem",
+        "geradoEm",
+        "regraFechamento",
+        "mesesRealizado",
+        "mesesForecast",
+        "moeda",
+        "classificacao",
+        "escopoEvolucao",
+        "versaoContrato"
+      ],
+      "properties": {
+        "gd": {
+          "type": "string"
+        },
+        "gdOrigem": {
+          "type": "string"
+        },
+        "geradoEm": {
+          "type": "string"
+        },
+        "ano": {
+          "type": "number"
+        },
+        "dataReferencia": {
+          "type": "string"
+        },
+        "modo": {
+          "type": "string"
+        },
+        "regraFechamento": {
+          "type": "string"
+        },
+        "mesesRealizado": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mesesForecast": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "moeda": {
+          "const": "BRL"
+        },
+        "classificacao": {
+          "const": "INTERNO"
+        },
+        "escopoEvolucao": {
+          "enum": [
+            "total",
+            "capacity"
+          ]
+        },
+        "versaoContrato": {
+          "type": "number"
+        }
+      }
+    },
+    "orcamentoTotal": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/BlocoOrcamento"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "orcamento",
+        "realizado",
+        "forecast",
+        "totalAno",
+        "gap",
+        "capacityRealizado",
+        "pfRealizado",
+        "capacityForecast",
+        "pfForecast"
+      ],
+      "properties": {
+        "orcamento": {
+          "type": "number"
+        },
+        "realizado": {
+          "type": "number"
+        },
+        "forecast": {
+          "type": "number"
+        },
+        "totalAno": {
+          "type": "number"
+        },
+        "gap": {
+          "type": "number"
+        },
+        "capacityRealizado": {
+          "type": "number"
+        },
+        "pfRealizado": {
+          "type": "number"
+        },
+        "capacityForecast": {
+          "type": "number"
+        },
+        "pfForecast": {
+          "type": "number"
+        }
+      }
+    },
+    "capacity": {
+      "$ref": "#/definitions/BlocoOrcamento"
+    },
+    "projetoFechado": {
+      "type": "object",
+      "required": [
+        "orcamento",
+        "realizado",
+        "forecast",
+        "totalAno",
+        "gap",
+        "capex",
+        "opex",
+        "saldoDiverge"
+      ],
+      "properties": {
+        "orcamento": {
+          "type": "number"
+        },
+        "realizado": {
+          "type": "number"
+        },
+        "forecast": {
+          "type": "number"
+        },
+        "totalAno": {
+          "type": "number"
+        },
+        "gap": {
+          "type": "number"
+        },
+        "capex": {
+          "$ref": "#/definitions/PfPorTipo"
+        },
+        "opex": {
+          "$ref": "#/definitions/PfPorTipo"
+        },
+        "saldoDiverge": {
+          "type": "boolean"
+        },
+        "detalhamento": {
+          "type": "object",
+          "required": [
+            "fonte",
+            "cadastroSha256",
+            "fornecedores"
+          ],
+          "properties": {
+            "fonte": {
+              "type": "string"
+            },
+            "cadastroSha256": {
+              "type": "string"
+            },
+            "fornecedores": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "nome",
+                  "base",
+                  "markup",
+                  "realizado",
+                  "capex",
+                  "opex",
+                  "ordensCompra"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "nome": {
+                    "type": "string"
+                  },
+                  "base": {
+                    "type": "number"
+                  },
+                  "markup": {
+                    "type": "number"
+                  },
+                  "realizado": {
+                    "type": "number"
+                  },
+                  "capex": {
+                    "type": "number"
+                  },
+                  "opex": {
+                    "type": "number"
+                  },
+                  "ordensCompra": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "numero",
+                        "nome",
+                        "base",
+                        "markup",
+                        "realizado",
+                        "capex",
+                        "opex"
+                      ],
+                      "properties": {
+                        "numero": {
+                          "type": "string"
+                        },
+                        "nome": {
+                          "type": "string"
+                        },
+                        "base": {
+                          "type": "number"
+                        },
+                        "markup": {
+                          "type": "number"
+                        },
+                        "realizado": {
+                          "type": "number"
+                        },
+                        "capex": {
+                          "type": "number"
+                        },
+                        "opex": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "capexOpex": {
+      "type": "object",
+      "required": [
+        "capex",
+        "opex",
+        "infra"
+      ],
+      "properties": {
+        "capex": {
+          "$ref": "#/definitions/LadoCapexOpex"
+        },
+        "opex": {
+          "$ref": "#/definitions/LadoCapexOpex"
+        },
+        "infra": {
+          "type": "number",
+          "description": "Realizado sem tipo de despesa; nem CAPEX nem OPEX."
+        }
+      }
+    },
+    "headcount": {
+      "type": "object",
+      "required": [
+        "funcAtivos",
+        "funcVagas",
+        "tercAtivos",
+        "tercVagas",
+        "total"
+      ],
+      "properties": {
+        "funcAtivos": {
+          "type": "number"
+        },
+        "funcVagas": {
+          "type": "number"
+        },
+        "tercAtivos": {
+          "type": "number"
+        },
+        "tercVagas": {
+          "type": "number"
+        },
+        "total": {
+          "type": "number"
+        }
+      }
+    },
+    "historicoHeadcount": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "mes",
+          "func",
+          "terc",
+          "total"
+        ],
+        "properties": {
+          "mes": {
+            "type": "string"
+          },
+          "func": {
+            "type": "number"
+          },
+          "terc": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "evolucaoMensal": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "mes",
+          "realizado",
+          "forecast",
+          "valor",
+          "tipo",
+          "misto"
+        ],
+        "properties": {
+          "mes": {
+            "type": "string"
+          },
+          "realizado": {
+            "type": "number"
+          },
+          "forecast": {
+            "type": "number"
+          },
+          "valor": {
+            "type": "number"
+          },
+          "tipo": {
+            "enum": [
+              "realizado",
+              "forecast"
+            ]
+          },
+          "misto": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "rtb": {
+      "type": "object",
+      "required": [
+        "meses",
+        "categorias",
+        "totalPorMes",
+        "total"
+      ],
+      "properties": {
+        "meses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "categorias": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "nome",
+              "porMes",
+              "total"
+            ],
+            "properties": {
+              "nome": {
+                "type": "string"
+              },
+              "porMes": {
+                "$ref": "#/definitions/PorMes"
+              },
+              "total": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "totalPorMes": {
+          "$ref": "#/definitions/PorMes"
+        },
+        "total": {
+          "type": "number"
+        }
+      }
+    },
+    "gravity": {
+      "type": "object",
+      "required": [
+        "meses",
+        "consumoPorMes",
+        "pessoasPorMes",
+        "horasPorMes",
+        "consumoTotal",
+        "horasTotal"
+      ],
+      "properties": {
+        "meses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "consumoPorMes": {
+          "$ref": "#/definitions/PorMes"
+        },
+        "pessoasPorMes": {
+          "$ref": "#/definitions/PorMes"
+        },
+        "horasPorMes": {
+          "$ref": "#/definitions/PorMes"
+        },
+        "consumoTotal": {
+          "type": "number"
+        },
+        "horasTotal": {
+          "type": "number"
+        }
+      }
+    },
+    "consultorias": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "nome",
+          "qtdPessoas",
+          "tarifaMin",
+          "tarifaMax",
+          "realizado",
+          "forecast",
+          "totalAno"
+        ],
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "qtdPessoas": {
+            "type": "number"
+          },
+          "tarifaMin": {
+            "type": "number"
+          },
+          "tarifaMax": {
+            "type": "number"
+          },
+          "realizado": {
+            "type": "number"
+          },
+          "forecast": {
+            "type": "number"
+          },
+          "totalAno": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "niveis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "nx",
+          "qtdAtivos",
+          "qtdVagas",
+          "tarifaMin",
+          "tarifaMax",
+          "realizado",
+          "forecast",
+          "totalAno"
+        ],
+        "properties": {
+          "nx": {
+            "type": "string"
+          },
+          "qtdAtivos": {
+            "type": "number"
+          },
+          "qtdVagas": {
+            "type": "number"
+          },
+          "tarifaMin": {
+            "type": "number"
+          },
+          "tarifaMax": {
+            "type": "number"
+          },
+          "realizado": {
+            "type": "number"
+          },
+          "forecast": {
+            "type": "number"
+          },
+          "totalAno": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "vagasAbertas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "tipo",
+          "posicao",
+          "nivelEmpresa",
+          "custoHora",
+          "forecastAno"
+        ],
+        "properties": {
+          "tipo": {
+            "enum": [
+              "Funcionário",
+              "Terceiro"
+            ]
+          },
+          "posicao": {
+            "type": "string"
+          },
+          "nivelEmpresa": {
+            "type": "string"
+          },
+          "custoHora": {
+            "type": "number"
+          },
+          "forecastAno": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "horasAcimaPrevisto": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "matricula",
+          "nome",
+          "tipo",
+          "empresa",
+          "tarifa",
+          "horas",
+          "previsto",
+          "excedente"
+        ],
+        "properties": {
+          "matricula": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "tarifa": {
+            "type": "number"
+          },
+          "horas": {
+            "type": "number"
+          },
+          "previsto": {
+            "type": "number"
+          },
+          "excedente": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "topTemasCtb": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "tema",
+          "nome",
+          "valor",
+          "horas",
+          "pessoas",
+          "custoMedioHora"
+        ],
+        "properties": {
+          "tema": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "number"
+          },
+          "horas": {
+            "type": "number"
+          },
+          "pessoas": {
+            "type": "number"
+          },
+          "custoMedioHora": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "triboSquad": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "tribo",
+          "squad",
+          "qtd",
+          "realizado",
+          "forecast",
+          "totalAno"
+        ],
+        "properties": {
+          "tribo": {
+            "type": "string"
+          },
+          "squad": {
+            "type": "string"
+          },
+          "qtd": {
+            "type": "number"
+          },
+          "realizado": {
+            "type": "number"
+          },
+          "forecast": {
+            "type": "number"
+          },
+          "totalAno": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "funcoes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "funcao",
+          "qtd",
+          "realizado",
+          "forecast",
+          "totalAno"
+        ],
+        "properties": {
+          "funcao": {
+            "type": "string"
+          },
+          "qtd": {
+            "type": "number"
+          },
+          "realizado": {
+            "type": "number"
+          },
+          "forecast": {
+            "type": "number"
+          },
+          "totalAno": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "iniciativas": {
+      "type": "object",
+      "required": [
+        "meses",
+        "capex",
+        "opex",
+        "totais",
+        "descartadas"
+      ],
+      "properties": {
+        "meses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "capex": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Iniciativa"
+          }
+        },
+        "opex": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Iniciativa"
+          }
+        },
+        "totais": {
+          "type": "object",
+          "required": [
+            "consumo",
+            "capex",
+            "opex",
+            "pctCapex",
+            "pctOpex"
+          ],
+          "properties": {
+            "consumo": {
+              "type": "number"
+            },
+            "capex": {
+              "type": "number"
+            },
+            "opex": {
+              "type": "number"
+            },
+            "pctCapex": {
+              "type": "number"
+            },
+            "pctOpex": {
+              "type": "number"
+            }
+          }
+        },
+        "descartadas": {
+          "type": "object",
+          "required": [
+            "semTipo",
+            "semMes",
+            "mesesForaDoFechamento",
+            "consumoForaDoFechamento"
+          ],
+          "properties": {
+            "semTipo": {
+              "type": "number"
+            },
+            "semMes": {
+              "type": "number"
+            },
+            "mesesForaDoFechamento": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "consumoForaDoFechamento": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}

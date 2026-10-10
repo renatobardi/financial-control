@@ -1,0 +1,547 @@
+{
+  "meta": {
+    "gd": "Unidade Exemplo",
+    "gdOrigem": "UNIDADE EXEMPLO",
+    "geradoEm": "01/10/2026 10:00",
+    "ano": 2026,
+    "dataReferencia": "2026-10-01",
+    "modo": "oficial",
+    "regraFechamento": "manual",
+    "mesesRealizado": [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set"
+    ],
+    "mesesForecast": [
+      "Out",
+      "Nov",
+      "Dez"
+    ],
+    "moeda": "BRL",
+    "classificacao": "INTERNO",
+    "escopoEvolucao": "total",
+    "versaoContrato": 3
+  },
+  "orcamentoTotal": {
+    "orcamento": 12500000.0,
+    "realizado": 7890000.0,
+    "forecast": 2160000.0,
+    "totalAno": 10050000.0,
+    "gap": 2450000.0,
+    "capacityRealizado": 5800000.0,
+    "pfRealizado": 2090000.0,
+    "capacityForecast": 1900000.0,
+    "pfForecast": 260000.0
+  },
+  "capacity": {
+    "orcamento": 8000000.0,
+    "realizado": 5800000.0,
+    "forecast": 1900000.0,
+    "totalAno": 7700000.0,
+    "gap": 300000.0
+  },
+  "projetoFechado": {
+    "orcamento": 4500000.0,
+    "realizado": 2090000.0,
+    "forecast": 260000.0,
+    "totalAno": 2350000.0,
+    "gap": 2150000.0,
+    "capex": {
+      "orcamento": 2500000.0,
+      "realizado": 1900000.0,
+      "saldo": 600000.0
+    },
+    "opex": {
+      "orcamento": 2000000.0,
+      "realizado": 190000.0,
+      "saldo": 1810000.0
+    },
+    "saldoDiverge": false,
+    "detalhamento": {
+      "fonte": "cadastro_oc",
+      "cadastroSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "fornecedores": [
+        {
+          "id": "a1b2c3d4e5f6",
+          "nome": "Fornecedor Exemplo A",
+          "base": 1400000.0,
+          "markup": 140000.0,
+          "realizado": 1540000.0,
+          "capex": 1540000.0,
+          "opex": 0.0,
+          "ordensCompra": [
+            {
+              "numero": "OC0001",
+              "nome": "Contrato exemplo - escopo genérico",
+              "base": 1400000.0,
+              "markup": 140000.0,
+              "realizado": 1540000.0,
+              "capex": 1540000.0,
+              "opex": 0.0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "capexOpex": {
+    "capex": {
+      "orcamento": 6500000.0,
+      "orcamentoCapacity": 4000000.0,
+      "orcamentoPf": 2500000.0,
+      "consumo": 5000000.0,
+      "consumoPessoas": 3100000.0,
+      "consumoCompras": 1900000.0,
+      "saldo": 1500000.0
+    },
+    "opex": {
+      "orcamento": 6000000.0,
+      "orcamentoCapacity": 4000000.0,
+      "orcamentoPf": 2000000.0,
+      "consumo": 2390000.0,
+      "consumoPessoas": 2700000.0,
+      "consumoCompras": -310000.0,
+      "saldo": -1790000.0
+    },
+    "infra": 500000.0
+  },
+  "headcount": {
+    "funcAtivos": 80,
+    "funcVagas": 6,
+    "tercAtivos": 40,
+    "tercVagas": 4,
+    "total": 130
+  },
+  "historicoHeadcount": [
+    {
+      "mes": "Jan",
+      "func": 80,
+      "terc": 40,
+      "total": 120
+    },
+    {
+      "mes": "Fev",
+      "func": 81,
+      "terc": 40,
+      "total": 121
+    },
+    {
+      "mes": "Mar",
+      "func": 82,
+      "terc": 41,
+      "total": 123
+    },
+    {
+      "mes": "Abr",
+      "func": 83,
+      "terc": 41,
+      "total": 124
+    },
+    {
+      "mes": "Mai",
+      "func": 84,
+      "terc": 42,
+      "total": 126
+    },
+    {
+      "mes": "Jun",
+      "func": 85,
+      "terc": 42,
+      "total": 127
+    },
+    {
+      "mes": "Jul",
+      "func": 86,
+      "terc": 43,
+      "total": 129
+    },
+    {
+      "mes": "Ago",
+      "func": 87,
+      "terc": 43,
+      "total": 130
+    },
+    {
+      "mes": "Set",
+      "func": 88,
+      "terc": 44,
+      "total": 132
+    }
+  ],
+  "evolucaoMensal": [
+    {
+      "mes": "Jan",
+      "realizado": 800000,
+      "forecast": 0.0,
+      "valor": 800000,
+      "tipo": "realizado",
+      "misto": false
+    },
+    {
+      "mes": "Fev",
+      "realizado": 900000,
+      "forecast": 0.0,
+      "valor": 900000,
+      "tipo": "realizado",
+      "misto": false
+    },
+    {
+      "mes": "Mar",
+      "realizado": 850000,
+      "forecast": 0.0,
+      "valor": 850000,
+      "tipo": "realizado",
+      "misto": false
+    },
+    {
+      "mes": "Abr",
+      "realizado": 820000,
+      "forecast": 0.0,
+      "valor": 820000,
+      "tipo": "realizado",
+      "misto": false
+    },
+    {
+      "mes": "Mai",
+      "realizado": 880000,
+      "forecast": 0.0,
+      "valor": 880000,
+      "tipo": "realizado",
+      "misto": false
+    },
+    {
+      "mes": "Jun",
+      "realizado": 860000,
+      "forecast": 0.0,
+      "valor": 860000,
+      "tipo": "realizado",
+      "misto": false
+    },
+    {
+      "mes": "Jul",
+      "realizado": 900000,
+      "forecast": 0.0,
+      "valor": 900000,
+      "tipo": "realizado",
+      "misto": false
+    },
+    {
+      "mes": "Ago",
+      "realizado": 870000,
+      "forecast": 0.0,
+      "valor": 870000,
+      "tipo": "realizado",
+      "misto": false
+    },
+    {
+      "mes": "Set",
+      "realizado": 890000,
+      "forecast": 0.0,
+      "valor": 890000,
+      "tipo": "realizado",
+      "misto": false
+    },
+    {
+      "mes": "Out",
+      "realizado": 120000.0,
+      "forecast": 660000.0,
+      "valor": 780000.0,
+      "tipo": "forecast",
+      "misto": true
+    },
+    {
+      "mes": "Nov",
+      "realizado": 0.0,
+      "forecast": 760000.0,
+      "valor": 760000.0,
+      "tipo": "forecast",
+      "misto": false
+    },
+    {
+      "mes": "Dez",
+      "realizado": 0.0,
+      "forecast": 740000.0,
+      "valor": 740000.0,
+      "tipo": "forecast",
+      "misto": false
+    }
+  ],
+  "rtb": {
+    "meses": [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set"
+    ],
+    "categorias": [
+      {
+        "nome": "Categoria Exemplo 1",
+        "porMes": {
+          "Jan": 200000,
+          "Fev": 200000,
+          "Mar": 200000,
+          "Abr": 200000,
+          "Mai": 200000,
+          "Jun": 200000,
+          "Jul": 200000,
+          "Ago": 200000,
+          "Set": 200000,
+          "Out": 0,
+          "Nov": 0,
+          "Dez": 0
+        },
+        "total": 1800000.0
+      },
+      {
+        "nome": "Categoria Exemplo 2",
+        "porMes": {
+          "Jan": 100000,
+          "Fev": 100000,
+          "Mar": 100000,
+          "Abr": 100000,
+          "Mai": 100000,
+          "Jun": 100000,
+          "Jul": 100000,
+          "Ago": 100000,
+          "Set": 100000,
+          "Out": 0,
+          "Nov": 0,
+          "Dez": 0
+        },
+        "total": 900000.0
+      }
+    ],
+    "totalPorMes": {
+      "Jan": 300000,
+      "Fev": 300000,
+      "Mar": 300000,
+      "Abr": 300000,
+      "Mai": 300000,
+      "Jun": 300000,
+      "Jul": 300000,
+      "Ago": 300000,
+      "Set": 300000,
+      "Out": 0,
+      "Nov": 0,
+      "Dez": 0
+    },
+    "total": 2700000.0
+  },
+  "gravity": {
+    "meses": [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set"
+    ],
+    "consumoPorMes": {
+      "Jan": 150000.0,
+      "Fev": 150000.0,
+      "Mar": 150000.0,
+      "Abr": 150000.0,
+      "Mai": 150000.0,
+      "Jun": 150000.0,
+      "Jul": 150000.0,
+      "Ago": 150000.0,
+      "Set": 150000.0
+    },
+    "pessoasPorMes": {
+      "Jan": 20.0,
+      "Fev": 20.0,
+      "Mar": 20.0,
+      "Abr": 20.0,
+      "Mai": 20.0,
+      "Jun": 20.0,
+      "Jul": 20.0,
+      "Ago": 20.0,
+      "Set": 20.0
+    },
+    "horasPorMes": {
+      "Jan": 1600.0,
+      "Fev": 1600.0,
+      "Mar": 1600.0,
+      "Abr": 1600.0,
+      "Mai": 1600.0,
+      "Jun": 1600.0,
+      "Jul": 1600.0,
+      "Ago": 1600.0,
+      "Set": 1600.0
+    },
+    "consumoTotal": 1350000.0,
+    "horasTotal": 14400.0
+  },
+  "consultorias": [
+    {
+      "nome": "Consultoria Exemplo A",
+      "qtdPessoas": 15,
+      "tarifaMin": 150.0,
+      "tarifaMax": 250.0,
+      "realizado": 1500000.0,
+      "forecast": 500000.0,
+      "totalAno": 2000000.0
+    }
+  ],
+  "niveis": [
+    {
+      "nx": "N7",
+      "qtdAtivos": 10,
+      "qtdVagas": 1,
+      "tarifaMin": 140.0,
+      "tarifaMax": 140.0,
+      "realizado": 900000.0,
+      "forecast": 300000.0,
+      "totalAno": 1200000.0
+    }
+  ],
+  "vagasAbertas": [
+    {
+      "tipo": "Terceiro",
+      "posicao": "Engenheiro Exemplo",
+      "nivelEmpresa": "Consultoria Exemplo A",
+      "custoHora": 180.0,
+      "forecastAno": 350000.0
+    }
+  ],
+  "horasAcimaPrevisto": [
+    {
+      "matricula": "F0000",
+      "nome": "Pessoa Exemplo",
+      "tipo": "Terceiro",
+      "empresa": "Consultoria Exemplo A",
+      "tarifa": 200.0,
+      "horas": 210.0,
+      "previsto": 176.0,
+      "excedente": 34.0
+    }
+  ],
+  "topTemasCtb": [
+    {
+      "tema": "TEMA-01",
+      "nome": "Tema Exemplo",
+      "valor": 400000.0,
+      "horas": 800.0,
+      "pessoas": 5,
+      "custoMedioHora": 500.0
+    }
+  ],
+  "triboSquad": [
+    {
+      "tribo": "Tribo Exemplo",
+      "squad": "Squad Exemplo",
+      "qtd": 12,
+      "realizado": 1100000.0,
+      "forecast": 350000.0,
+      "totalAno": 1450000.0
+    }
+  ],
+  "funcoes": [
+    {
+      "funcao": "Engenheiro",
+      "qtd": 50,
+      "realizado": 4000000.0,
+      "forecast": 1300000.0,
+      "totalAno": 5300000.0
+    }
+  ],
+  "iniciativas": {
+    "meses": [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez"
+    ],
+    "capex": [
+      {
+        "nome": "Iniciativa Exemplo CAPEX",
+        "porMes": {
+          "Jan": 300000.0,
+          "Fev": 300000.0,
+          "Mar": 300000.0,
+          "Abr": 300000.0,
+          "Mai": 300000.0,
+          "Jun": 300000.0,
+          "Jul": 300000.0,
+          "Ago": 300000.0,
+          "Set": 300000.0
+        },
+        "total": 2700000.0,
+        "pct": 55.0,
+        "demandas": [
+          {
+            "numero": "D-001",
+            "nome": "Demanda exemplo",
+            "porMes": {
+              "Jan": 150000.0,
+              "Fev": 150000.0,
+              "Mar": 150000.0,
+              "Abr": 150000.0,
+              "Mai": 150000.0,
+              "Jun": 150000.0,
+              "Jul": 150000.0,
+              "Ago": 150000.0,
+              "Set": 150000.0
+            },
+            "total": 1350000.0
+          }
+        ]
+      }
+    ],
+    "opex": [
+      {
+        "nome": "Iniciativa Exemplo OPEX",
+        "porMes": {
+          "Jan": 200000.0,
+          "Fev": 200000.0,
+          "Mar": 200000.0,
+          "Abr": 200000.0,
+          "Mai": 200000.0,
+          "Jun": 200000.0,
+          "Jul": 200000.0,
+          "Ago": 200000.0,
+          "Set": 200000.0
+        },
+        "total": 1800000.0,
+        "pct": 45.0
+      }
+    ],
+    "totais": {
+      "consumo": 7890000.0,
+      "capex": 5000000.0,
+      "opex": 2390000.0,
+      "pctCapex": 63.4,
+      "pctOpex": 30.3
+    },
+    "descartadas": {
+      "semTipo": 500000.0,
+      "semMes": 0.0,
+      "mesesForaDoFechamento": [
+        "Out"
+      ],
+      "consumoForaDoFechamento": 120000.0
+    }
+  }
+}

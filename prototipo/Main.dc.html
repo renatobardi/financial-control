@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Kubo — Painel</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/kubo/styles.css">
+<script src="ds/kubo/_ds_bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="{{themeClass}}" style="min-height: 100vh; display: flex; flex-wrap: wrap; background: var(--background); color: var(--foreground); font-family: 'Inter Variable', Inter, system-ui, sans-serif; font-size: 14px;">
+  <x-import component-from-global-scope="KoboDesignSystem_6efae6.Sidebar" top="{{top}}" groups="{{groups}}" active="Painel" user="{{user}}" brand="Kubo" tagline="The art of getting things done" style="flex: 0 0 256px;"></x-import>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column;">
+    <header style="height: 72px; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 24px; border-bottom: 1px solid color-mix(in oklab, var(--border) 50%, transparent);">
+      <x-import component-from-global-scope="KoboDesignSystem_6efae6.Button" variant="ghost" size="icon-sm" icon="panel-left" aria-label="Alternar sidebar"></x-import>
+      <div style="width: 1px; height: 16px; background: var(--border);"></div>
+      <x-import component-from-global-scope="KoboDesignSystem_6efae6.Breadcrumb" segments="{{crumbs}}"></x-import>
+    </header>
+    <main style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
+      <x-import component-from-global-scope="KoboDesignSystem_6efae6.PageHeader" title="Painel" description="Visão geral de fluxos, execuções e conhecimento."></x-import>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+        <x-import component-from-global-scope="KoboDesignSystem_6efae6.StatTile" label="Destilados" value="—" icon="book-open"></x-import>
+        <x-import component-from-global-scope="KoboDesignSystem_6efae6.StatTile" label="Fluxos ativos" value="—" icon="workflow"></x-import>
+        <x-import component-from-global-scope="KoboDesignSystem_6efae6.StatTile" label="Execuções hoje" value="—" icon="activity"></x-import>
+        <x-import component-from-global-scope="KoboDesignSystem_6efae6.StatTile" label="Gates pendentes" value="—" icon="shield"></x-import>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px;">
+        <x-import component-from-global-scope="KoboDesignSystem_6efae6.Card">
+          <x-import component-from-global-scope="KoboDesignSystem_6efae6.CardHeader">
+            <x-import component-from-global-scope="KoboDesignSystem_6efae6.CardTitle">Execuções recentes</x-import>
+            <x-import component-from-global-scope="KoboDesignSystem_6efae6.CardDescription">Últimos runs · todos os fluxos</x-import>
+          </x-import>
+          <x-import component-from-global-scope="KoboDesignSystem_6efae6.CardContent">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 0; text-align: center;">
+              <div style="width: 48px; height: 48px; border-radius: 999px; background: var(--muted); display: flex; align-items: center; justify-content: center; color: var(--muted-foreground);">
+                <x-import component-from-global-scope="KoboDesignSystem_6efae6.Icon" name="play"></x-import>
+              </div>
+              <div style="font-weight: 600;">Nenhuma execução ainda</div>
+              <div style="color: var(--muted-foreground);">Rode um fluxo e ele aparece aqui.</div>
+              <x-import component-from-global-scope="KoboDesignSystem_6efae6.Button" variant="outline" size="sm" icon="plus">Novo fluxo</x-import>
+            </div>
+          </x-import>
+        </x-import>
+        <x-import component-from-global-scope="KoboDesignSystem_6efae6.Card">
+          <x-import component-from-global-scope="KoboDesignSystem_6efae6.CardHeader">
+            <x-import component-from-global-scope="KoboDesignSystem_6efae6.CardTitle">Gates aguardando</x-import>
+            <x-import component-from-global-scope="KoboDesignSystem_6efae6.CardDescription">Tasks do Humano · aprovação necessária</x-import>
+          </x-import>
+          <x-import component-from-global-scope="KoboDesignSystem_6efae6.CardContent">
+            <div style="display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border);">
+                <span style="flex-grow: 1;">[Nome da task]</span>
+                <x-import component-from-global-scope="KoboDesignSystem_6efae6.Badge" variant="outline" icon="clock">Gate</x-import>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0;">
+                <span style="flex-grow: 1;">[Nome da task]</span>
+                <x-import component-from-global-scope="KoboDesignSystem_6efae6.Badge" variant="outline" icon="clock">Gate</x-import>
+              </div>
+            </div>
+          </x-import>
+        </x-import>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      themeClass: this.props.dark ? 'dark' : '',
+      top: [{ title: 'Painel', icon: 'house' }],
+      groups: [
+        { label: 'Conhecimento', items: [
+          { title: 'Destilados', icon: 'book-open' },
+          { title: 'Entidades', icon: 'blocks' },
+          { title: 'Fontes', icon: 'file' }
+        ] },
+        { label: 'Trabalho', items: [
+          { title: 'Fluxos', icon: 'workflow' },
+          { title: 'Execuções', icon: 'play' }
+        ] },
+        { label: 'Distribuição', items: [
+          { title: 'Destinos', icon: 'zap' },
+          { title: 'Envios', icon: 'arrow-up' }
+        ] },
+        { label: 'Catálogos', items: [
+          { title: 'Integrações', icon: 'key' },
+          { title: 'Atores', icon: 'bot' },
+          { title: 'Modelos', icon: 'cpu' }
+        ] }
+      ],
+      user: { name: 'Renato Bardi', email: 'owner' },
+      crumbs: [{ label: 'Kubo', href: '#' }, { label: 'Painel' }]
+    };
+  }
+}
+</script>
+</body>
+</html>
