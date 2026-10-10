@@ -11,3 +11,6 @@ nao_implementado = "{comando}: ainda não implementado"
 servir = "sobe o app (--porta N, padrão 8000)"
 semear = "carrega dados de exemplo"
 criar_admin = "cria o primeiro usuário Admin"
+
+[comum]
+carregando = "Carregando…"
