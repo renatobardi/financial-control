@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bloco_lazy %}
+{% block titulo %}{{ t("forecast.titulo") }}{% endblock %}
+{% block corpo %}
+<header class="flex items-center justify-between border-b border-border px-6 py-3">
+  <a href="/" class="font-semibold">{{ t("configuracoes.voltar") }}</a>
+  <span class="text-muted-foreground">{{ t("inicio.bd_papel", bd=bd_nome, papel=papel) }}</span>
+</header>
+<main class="mx-auto flex max-w-6xl flex-col gap-4 p-6">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">{{ t("forecast.titulo") }}</h1>
+    <p class="text-muted-foreground">{{ t("forecast.sub") }}</p>
+  </div>
+  {{ bloco_lazy("/forecast/painel?base=" ~ base ~ ("&cenario=" ~ cenario if cenario else "") ~ ("&rev=" ~ rev if rev else ""), gatilho="load", altura="h-96") }}
+</main>
+{% endblock %}

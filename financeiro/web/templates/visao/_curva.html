@@ -1,0 +1,9 @@
+<section class="rounded-2xl bg-card p-4 ring-1 ring-border">
+  <h2 class="mb-2 font-semibold">{{ t("visao.curva") }}</h2>
+  {{ svg|safe }}
+  <ul class="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+    <li>- - - {{ t("visao.curva_budget") }}</li>
+    <li>━ {{ t("visao.curva_realizado") }}</li>
+    <li>· · · {{ t("visao.curva_forecast") }}</li>
+  </ul>
+</section>

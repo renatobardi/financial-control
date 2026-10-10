@@ -141,7 +141,7 @@ def atomos(
     return resultado
 
 
-def _na_base(conexao: Conexao, bd_id: int, atomo: Atomo, base: str, cache: dict) -> int:
+def na_base(conexao: Conexao, bd_id: int, atomo: Atomo, base: str, cache: dict) -> int:
     if base == "bruto":
         return atomo.valor_centavos
     if atomo.mes not in cache:
@@ -150,25 +150,46 @@ def _na_base(conexao: Conexao, bd_id: int, atomo: Atomo, base: str, cache: dict)
     return orcamento.liquido_de(atomo.valor_centavos, cache[atomo.mes])
 
 
+def revisao_escolhida(conexao: Conexao, bd_id: int, revisao_id: int | None):
+    if revisao_id is None:
+        return orcamento.vigente(conexao, bd_id)
+    return next((r for r in orcamento.revisoes(conexao, bd_id) if r.id == revisao_id), None)
+
+
+def orcamento_da_revisao(
+    conexao: Conexao, bd_id: int, revisao_id: int | None, base: str, agora: datetime
+) -> int | None:
+    """Total do PDD da revisão (a vigente se não informada), na base pedida."""
+    revisao = revisao_escolhida(conexao, bd_id, revisao_id)
+    if revisao is None:
+        return None
+    return sum(
+        x.bruto_centavos if base == "bruto" else x.liquido_centavos
+        for x in orcamento.linhas(conexao, bd_id, revisao.id, agora)
+    )
+
+
 def resumo(
-    conexao: Conexao, bd_id: int, ano: int, cenario: Cenario, base: str, agora: datetime
+    conexao: Conexao,
+    bd_id: int,
+    ano: int,
+    cenario: Cenario,
+    base: str,
+    agora: datetime,
+    revisao_id: int | None = None,
 ) -> Resumo:
-    """Realizado, forecast do cenário, orçamento vigente e gap (orçamento − total do ano)."""
+    """Realizado, forecast do cenário, orçamento da revisão e gap (orçamento − total do ano)."""
     cache: dict[str, int] = {}
     realizado = forecast = 0
     for a in atomos(conexao, bd_id, ano, cenario, agora):
-        valor = _na_base(conexao, bd_id, a, base, cache)
+        valor = na_base(conexao, bd_id, a, base, cache)
         if a.realizado:
             realizado += valor
         else:
             forecast += valor
-    vigente = orcamento.vigente(conexao, bd_id)
-    if vigente is None:
+    total_orcamento = orcamento_da_revisao(conexao, bd_id, revisao_id, base, agora)
+    if total_orcamento is None:
         return Resumo(realizado, forecast, None, None)
-    linhas = orcamento.linhas(conexao, bd_id, vigente.id, agora)
-    total_orcamento = sum(
-        x.bruto_centavos if base == "bruto" else x.liquido_centavos for x in linhas
-    )
     return Resumo(
         realizado, forecast, total_orcamento, orcamento.gap(total_orcamento, realizado + forecast)
     )
@@ -223,7 +244,13 @@ def _tribo_de(org_id: int | None, orgs: dict) -> int | None:
 
 
 def composicao(
-    conexao: Conexao, bd_id: int, ano: int, cenario: Cenario, base: str, agora: datetime
+    conexao: Conexao,
+    bd_id: int,
+    ano: int,
+    cenario: Cenario,
+    base: str,
+    agora: datetime,
+    revisao_id: int | None = None,
 ) -> Composicao:
     orgs = {o.id: o for o in organizacao.listar_orgs(conexao, bd_id)}
     agrupamentos = {a.id: a.nome for a in portfolio.listar_agrupamentos(conexao, bd_id)}
@@ -257,7 +284,7 @@ def composicao(
     for a in atomos(conexao, bd_id, ano, cenario, agora):
         if a.mes not in meses:
             continue
-        valor = _na_base(conexao, bd_id, a, base, cache)
+        valor = na_base(conexao, bd_id, a, base, cache)
         total_periodo += valor
         if not na_escala(a):
             continue
@@ -276,13 +303,8 @@ def composicao(
         key=lambda e: (-e.total, e.nome),
     )
 
-    vigente = orcamento.vigente(conexao, bd_id)
-    pdd_ano = 0
-    if vigente is not None:
-        pdd_ano = sum(
-            x.bruto_centavos if base == "bruto" else x.liquido_centavos
-            for x in orcamento.linhas(conexao, bd_id, vigente.id, agora)
-        )
+    vigente = revisao_escolhida(conexao, bd_id, revisao_id)
+    pdd_ano = orcamento_da_revisao(conexao, bd_id, revisao_id, base, agora) or 0
     pdd_periodo = pdd_ano * len(meses) // 12
     if cenario.escala_valor_centavos is not None:
         escala_valor = cenario.escala_valor_centavos

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from financeiro import autenticacao, store
+from financeiro import autenticacao, cenarios, orcamento, store
 from financeiro import senha as senhas
 from financeiro.i18n import t
 from financeiro.store import acesso
@@ -16,6 +16,18 @@ from financeiro.web.sessao import (
 from financeiro.web.templates import renderizar
 
 roteador = APIRouter()
+
+# Tela inicial escolhida em Configurações → rota. "Visão geral" é a raiz.
+TELAS_INICIAIS = {
+    "Orçamento (PDD)": "/orcamento",
+    "Realizado": "/realizado",
+    "Forecast": "/forecast",
+    "Pessoas": "/pessoas",
+    "Compras (OC/OS)": "/compras",
+    "Cadastros": "/cadastros",
+    "Cargas": "/cargas",
+    "Fechamento": "/fechamento",
+}
 
 
 def _tema(contexto: Contexto | None) -> str:
@@ -67,6 +79,8 @@ def entrar(
             destino = "/bds"
     if escolhido is not None:
         autenticacao.escolher_bd(conexao, token, escolhido)
+        usuario = acesso.achar_usuario(conexao, sessao.usuario_id)
+        destino = TELAS_INICIAIS.get(usuario.tela_inicial, "/") if usuario else "/"
     resposta = RedirectResponse(destino, status_code=303)
     resposta.set_cookie(
         NOME_COOKIE,
@@ -123,18 +137,32 @@ def criar_conta(
 
 
 @roteador.get("/")
-def inicio(contexto: Contexto | None = Depends(contexto_opcional)):
+def inicio(
+    cenario: int | None = None,
+    base: str = "bruto",
+    rev: int | None = None,
+    contexto: Contexto | None = Depends(contexto_opcional),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    """Visão geral: a casca primeiro, os blocos por fragmento (lazy)."""
     if contexto is None:
         return RedirectResponse("/login", status_code=303)
     if contexto.bd_id is None:
         return RedirectResponse("/bds", status_code=303)
+    todos = cenarios.garantir_padrao(conexao, contexto.bd_id)
+    escolhido = next((c for c in todos if c.id == cenario), todos[0])
     return renderizar(
-        "inicio.html",
+        "visao_geral.html",
         tema=contexto.usuario.tema,
         csrf=contexto.csrf,
         usuario=contexto.usuario,
         bd_nome=contexto.bd_nome,
         papel=contexto.papel,
+        cenarios=todos,
+        cenario_id=escolhido.id,
+        revisoes=orcamento.revisoes(conexao, contexto.bd_id),
+        base=base if base in ("bruto", "liquido") else "bruto",
+        rev=rev,
     )
 
 

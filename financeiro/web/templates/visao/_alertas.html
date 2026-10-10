@@ -1,0 +1,12 @@
+<section class="rounded-2xl bg-card p-4 ring-1 ring-border">
+  <h2 class="mb-2 font-semibold">{{ t("visao.atencao") }}</h2>
+  {% if v.alertas %}
+  <ul class="flex flex-col gap-2">
+    {% for a in v.alertas %}
+    <li class="rounded-xl bg-muted px-3 py-2">{{ t("visao.alerta_" ~ a.chave, **a.params) }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-muted-foreground">{{ t("visao.tudo_em_dia") }}</p>
+  {% endif %}
+</section>
