@@ -31,3 +31,20 @@ O tenant é a BD.
 - **Calendário:** 8 h × dias úteis.
 - **Fechamento:** mensal, manual e reversível, com log.
 - **Cargas:** CSV com relatório sintético e analítico. Horas extras precisam de aprovação.
+
+## Rodar o app
+
+Python 3.12 e `uv`. Da raiz do repositório:
+
+```bash
+uv sync
+export FINANCEIRO_COOKIE_SEGURO=0      # só em desenvolvimento, sem TLS
+export FINANCEIRO_ADMIN_SENHA='uma-senha-forte'
+uv run python -m financeiro semear     # dados de exemplo; entre com demo@exemplo.com
+uv run python -m financeiro servir     # http://127.0.0.1:8000
+```
+
+- Em produção: `uv run python -m financeiro criar-admin --email E --nome N --bd B` (a senha é
+  perguntada no terminal) e `docs/deploy.md`.
+- Gates: `make test` e `make lint`. A CI roda os dois e constrói a imagem Docker.
+- Banco: um arquivo SQLite (`FINANCEIRO_BD`, padrão `dados/financeiro.db`), migrado na partida.

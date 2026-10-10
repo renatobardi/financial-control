@@ -48,3 +48,20 @@ Só `financeiro/config.py` lê o ambiente: `FINANCEIRO_BD` (padrão `dados/finan
 ## Front
 
 HTML no servidor (Jinja2 + HTMX), Tailwind 4 standalone compilado no `Dockerfile` a partir de `financeiro/web/styles/input.css` (tokens do Kubo). `static/app.css` não vai para o git. Texto visível vem só do catálogo `financeiro/i18n/pt-BR.toml`: um teste falha se um template tiver texto solto. Bloco pesado de tela usa a macro `bloco_lazy(url)`.
+
+## Mapa do código
+
+| Onde | O quê |
+|---|---|
+| `financeiro/store/` | Todo o SQL. Migrações em `store/migracoes/NNNN_*.sql`. Função de tabela de dado recebe `bd_id` (a guarda confere) |
+| `financeiro/{autenticacao,senha,membros}.py` | Login, sessão, scrypt, papéis e pedidos de acesso |
+| `financeiro/{organizacao,equipe,compras,orcamento,calendario}.py` | Regras dos cadastros, pessoas, compras (OC/OS), PDD e calendário |
+| `financeiro/{consumo,fechamento,realizado,forecast,cenarios,visao_geral}.py` | Consumo do mês, fechamento (congela o realizado), realizado por dimensão, forecast e cenários |
+| `financeiro/cargas/` | CSV, seis layouts, validação, diário e desfazer |
+| `financeiro/{treemap,graficos}.py` | Layout do treemap e gráficos em SVG (sem JavaScript) |
+| `financeiro/web/` | Rotas FastAPI, templates Jinja e estáticos. Texto visível só do catálogo `i18n/pt-BR.toml` |
+| `financeiro/cli.py` | `servir`, `criar-admin`, `semear` e `backup` |
+
+Regras que os testes conferem: dinheiro em centavos inteiros; `bd_id` obrigatório; mês fechado é
+realizado e fica congelado (`realizado_linha`); texto de template só do catálogo; gap =
+orçamento − total do ano, com o mesmo sinal em todas as telas.
