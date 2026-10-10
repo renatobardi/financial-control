@@ -105,3 +105,13 @@ def test_sem_migracao_pendente_nao_copia(tmp_path):
     store.migrar(conexao, pasta)
 
     assert sorted(p.name for p in tmp_path.glob("financeiro.db.antes-da-*")) == []
+
+
+def test_versao_atual_acompanha_as_migracoes(tmp_path):
+    pasta = _pasta(tmp_path, **{"0001_pessoa": "CREATE TABLE pessoa (id INTEGER PRIMARY KEY);"})
+    conexao = store.abrir(tmp_path / "financeiro.db")
+    assert store.versao_atual(conexao) == 0
+
+    store.migrar(conexao, pasta)
+
+    assert store.versao_atual(conexao) == 1
