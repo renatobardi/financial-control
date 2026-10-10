@@ -1,0 +1,39 @@
+<section class="flex flex-col gap-3" id="historico-conteudo">
+  <div>
+    <h2 class="font-semibold">{{ t("cargas.historico") }}</h2>
+    <p class="text-muted-foreground">{{ t("cargas.historico_sub") }}</p>
+  </div>
+  {% if cargas %}
+  <div class="overflow-x-auto rounded-2xl ring-1 ring-border">
+    <table class="w-full text-left">
+      <thead class="bg-muted text-muted-foreground"><tr>
+        {% for c in ["col_id", "col_arquivo", "col_layout", "col_quem", "col_quando", "lidas", "inseridas", "atualizadas", "rejeitadas", "col_estado"] %}
+        <th class="px-3 py-2 font-medium">{{ t("cargas." ~ c) }}</th>
+        {% endfor %}
+        <th class="px-3 py-2"></th>
+      </tr></thead>
+      <tbody>
+        {% for c in cargas %}
+        <tr class="border-t border-border">
+          <td class="px-3 py-2">#{{ c.id }}</td>
+          <td class="px-3 py-2">{{ c.arquivo }}</td>
+          <td class="px-3 py-2">{{ c.layout }}</td>
+          <td class="px-3 py-2">{{ c.usuario }}</td>
+          <td class="px-3 py-2">{{ data_hora(c.em) }}</td>
+          <td class="px-3 py-2">{{ c.lidas }}</td>
+          <td class="px-3 py-2">{{ c.inseridas }}</td>
+          <td class="px-3 py-2">{{ c.atualizadas }}</td>
+          <td class="px-3 py-2">{{ c.rejeitadas }}</td>
+          <td class="px-3 py-2">{{ t("cargas.estado_" ~ c.estado) }}</td>
+          <td class="px-3 py-2">
+            <a class="underline" href="/cargas/{{ c.id }}" hx-get="/cargas/{{ c.id }}" hx-target="#resultado" hx-swap="innerHTML">{{ t("cargas.ver") }}</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted-foreground">{{ t("cargas.historico_vazio") }}</p>
+  {% endif %}
+</section>

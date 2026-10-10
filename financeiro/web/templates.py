@@ -18,7 +18,12 @@ def ambiente() -> Environment:
         undefined=StrictUndefined,
     )
     env.globals.update(
-        t=i18n.t, moeda=i18n.moeda, moeda_mil=i18n.moeda_mil, mes=i18n.mes, numero=i18n.numero
+        t=i18n.t,
+        moeda=i18n.moeda,
+        moeda_mil=i18n.moeda_mil,
+        mes=i18n.mes,
+        numero=i18n.numero,
+        data_hora=i18n.data_hora,
     )
     return env
 
