@@ -68,3 +68,25 @@ async def exigir_csrf(request: Request, contexto: Contexto = Depends(exigir_sess
     if not enviado or not hmac.compare_digest(enviado, contexto.csrf):
         raise HTTPException(status_code=403, detail=t("auth.erro_csrf"))
     return contexto
+
+
+def _com_bd(contexto: Contexto) -> Contexto:
+    if contexto.bd_id is None:
+        raise HTTPException(status_code=409, detail=t("papel.sem_bd"))
+    return contexto
+
+
+async def exigir_edicao(contexto: Contexto = Depends(exigir_csrf)) -> Contexto:
+    """Admin ou Editor do BD atual. Leitor só consulta."""
+    _com_bd(contexto)
+    if contexto.papel not in ("Admin", "Editor"):
+        raise HTTPException(status_code=403, detail=t("papel.leitor_so_consulta"))
+    return contexto
+
+
+async def exigir_admin(contexto: Contexto = Depends(exigir_csrf)) -> Contexto:
+    """Admin do BD atual."""
+    _com_bd(contexto)
+    if contexto.papel != "Admin":
+        raise HTTPException(status_code=403, detail=t("papel.so_admin"))
+    return contexto

@@ -117,3 +117,132 @@ def bds_do_usuario(conexao: sqlite3.Connection, usuario_id: int) -> list[BdDoUsu
         (usuario_id,),
     ).fetchall()
     return [BdDoUsuario(*linha) for linha in linhas]
+
+
+class BdSimples(NamedTuple):
+    id: int
+    nome: str
+    sigla: str
+
+
+class Pedido(NamedTuple):
+    id: int
+    bd_id: int
+    usuario_id: int
+    email: str
+    nome: str
+    motivo: str
+    estado: str
+
+
+def atualizar_perfil(conexao: sqlite3.Connection, usuario_id: int, nome: str) -> None:
+    conexao.execute("UPDATE usuario SET nome = ? WHERE id = ?", (nome, usuario_id))
+    conexao.commit()
+
+
+def definir_senha(conexao: sqlite3.Connection, usuario_id: int, senha_hash: str) -> None:
+    conexao.execute("UPDATE usuario SET senha_hash = ? WHERE id = ?", (senha_hash, usuario_id))
+    conexao.commit()
+
+
+def atualizar_preferencias(
+    conexao: sqlite3.Connection,
+    usuario_id: int,
+    tema: str,
+    formato_valor: str,
+    tela_inicial: str,
+    bd_padrao_id: int | None,
+) -> None:
+    conexao.execute(
+        "UPDATE usuario SET tema = ?, formato_valor = ?, tela_inicial = ?, bd_padrao_id = ?"
+        " WHERE id = ?",
+        (tema, formato_valor, tela_inicial, bd_padrao_id, usuario_id),
+    )
+    conexao.commit()
+
+
+def convidar(conexao: sqlite3.Connection, bd_id: int, email: str, papel: str) -> tuple[int, bool]:
+    """Dá acesso ao BD. E-mail sem conta ganha uma conta pendente (sem senha).
+
+    Devolve (usuario_id, conta_nova).
+    """
+    usuario = achar_usuario_por_email(conexao, email)
+    conta_nova = usuario is None
+    usuario_id = (
+        criar_usuario(conexao, email, email.split("@")[0], None) if usuario is None else usuario.id
+    )
+    conexao.execute(
+        "INSERT INTO membro (bd_id, usuario_id, papel) VALUES (?, ?, ?)"
+        " ON CONFLICT (bd_id, usuario_id) DO UPDATE SET papel = excluded.papel",
+        (bd_id, usuario_id, papel),
+    )
+    conexao.commit()
+    return usuario_id, conta_nova
+
+
+def contar_admins(conexao: sqlite3.Connection, bd_id: int) -> int:
+    return conexao.execute(
+        "SELECT COUNT(*) FROM membro WHERE bd_id = ? AND papel = 'Admin'", (bd_id,)
+    ).fetchone()[0]
+
+
+def criar_pedido(
+    conexao: sqlite3.Connection, bd_id: int, usuario_id: int, motivo: str, criado_em: str
+) -> int:
+    cursor = conexao.execute(
+        "INSERT INTO pedido_acesso (bd_id, usuario_id, motivo, criado_em) VALUES (?, ?, ?, ?)",
+        (bd_id, usuario_id, motivo, criado_em),
+    )
+    conexao.commit()
+    return cursor.lastrowid
+
+
+def pedidos_abertos(conexao: sqlite3.Connection, bd_id: int) -> list[Pedido]:
+    linhas = conexao.execute(
+        "SELECT p.id, p.bd_id, p.usuario_id, u.email, u.nome, p.motivo, p.estado"
+        " FROM pedido_acesso p JOIN usuario u ON u.id = p.usuario_id"
+        " WHERE p.bd_id = ? AND p.estado = 'aberto' ORDER BY p.id",
+        (bd_id,),
+    ).fetchall()
+    return [Pedido(*linha) for linha in linhas]
+
+
+def decidir_pedido(conexao: sqlite3.Connection, bd_id: int, pedido_id: int, estado: str) -> None:
+    conexao.execute(
+        "UPDATE pedido_acesso SET estado = ? WHERE id = ? AND bd_id = ?",
+        (estado, pedido_id, bd_id),
+    )
+    conexao.commit()
+
+
+def achar_pedido(conexao: sqlite3.Connection, bd_id: int, pedido_id: int) -> Pedido | None:
+    linha = conexao.execute(
+        "SELECT p.id, p.bd_id, p.usuario_id, u.email, u.nome, p.motivo, p.estado"
+        " FROM pedido_acesso p JOIN usuario u ON u.id = p.usuario_id"
+        " WHERE p.id = ? AND p.bd_id = ?",
+        (pedido_id, bd_id),
+    ).fetchone()
+    return Pedido(*linha) if linha else None
+
+
+@entre_bds
+def pedidos_do_usuario(conexao: sqlite3.Connection, usuario_id: int) -> list[Pedido]:
+    """Os pedidos do próprio usuário, em qualquer BD, para ele acompanhar."""
+    linhas = conexao.execute(
+        "SELECT p.id, p.bd_id, p.usuario_id, u.email, u.nome, p.motivo, p.estado"
+        " FROM pedido_acesso p JOIN usuario u ON u.id = p.usuario_id"
+        " WHERE p.usuario_id = ? ORDER BY p.id",
+        (usuario_id,),
+    ).fetchall()
+    return [Pedido(*linha) for linha in linhas]
+
+
+@entre_bds
+def bds_sem_vinculo(conexao: sqlite3.Connection, usuario_id: int) -> list[BdSimples]:
+    """BDs de que o usuário ainda não faz parte, para ele pedir acesso."""
+    linhas = conexao.execute(
+        "SELECT b.id, b.nome, b.sigla FROM bd b"
+        " WHERE b.id NOT IN (SELECT bd_id FROM membro WHERE usuario_id = ?) ORDER BY b.id",
+        (usuario_id,),
+    ).fetchall()
+    return [BdSimples(*linha) for linha in linhas]

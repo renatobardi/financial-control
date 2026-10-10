@@ -23,6 +23,6 @@ def ambiente() -> Environment:
     return env
 
 
-def renderizar(nome: str, status: int = 200, **contexto: object) -> HTMLResponse:
+def renderizar(template: str, /, status: int = 200, **contexto: object) -> HTMLResponse:
     """Renderiza um template da pasta de templates como resposta HTML."""
-    return HTMLResponse(ambiente().get_template(nome).render(**contexto), status_code=status)
+    return HTMLResponse(ambiente().get_template(template).render(**contexto), status_code=status)
