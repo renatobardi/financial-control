@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% from "_macros.html" import botao, badge, card %}
+{% block titulo %}{{ t("configuracoes.titulo") }}{% endblock %}
+{% macro campo(id, rotulo_chave, nome, valor="", tipo="text", extra="") %}
+  <label class="flex flex-col gap-1.5 font-medium" for="{{ id }}">{{ t(rotulo_chave) }}
+    <input id="{{ id }}" name="{{ nome }}" type="{{ tipo }}" value="{{ valor }}" {{ extra }}
+           class="h-9 rounded-4xl border border-input bg-background px-3.5 font-normal">
+  </label>
+{% endmacro %}
+{% macro seletor(id, rotulo_chave, nome) %}
+  <label class="flex flex-col gap-1.5 font-medium" for="{{ id }}">{{ t(rotulo_chave) }}
+    <select id="{{ id }}" name="{{ nome }}"
+            class="h-9 rounded-4xl border border-input bg-background px-3 font-normal">{{ caller() }}</select>
+  </label>
+{% endmacro %}
+{% block corpo %}
+<header class="flex items-center justify-between border-b border-border px-6 py-3">
+  <a href="/" class="font-semibold">{{ t("configuracoes.voltar") }}</a>
+  <span class="text-muted-foreground">{{ t("inicio.bd_papel", bd=bd_nome or "", papel=papel or "") }}</span>
+</header>
+<main class="mx-auto flex max-w-3xl flex-col gap-4 p-6">
+  <h1 class="text-xl font-semibold tracking-tight">{{ t("configuracoes.titulo") }}</h1>
+  {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
+  {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+
+  {% call card("configuracoes.perfil") %}
+    <p class="mb-3 text-muted-foreground">{{ t("configuracoes.perfil_sub") }}</p>
+    <form method="post" action="/configuracoes/perfil" class="flex flex-col gap-3">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {{ campo("nome", "configuracoes.nome", "nome", usuario.nome, extra="required") }}
+      <p class="text-muted-foreground">{{ t("configuracoes.email") }}: {{ usuario.email }}</p>
+      {{ botao("configuracoes.salvar_perfil", tipo="submit") }}
+    </form>
+  {% endcall %}
+
+  {% call card("configuracoes.senha") %}
+    <form method="post" action="/configuracoes/senha" class="flex flex-col gap-3">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {{ campo("atual", "configuracoes.senha_atual", "atual", tipo="password", extra="required autocomplete=current-password") }}
+      {{ campo("nova", "configuracoes.senha_nova", "nova", tipo="password", extra="required autocomplete=new-password") }}
+      {{ campo("confirmar", "configuracoes.senha_confirmar", "confirmar", tipo="password", extra="required autocomplete=new-password") }}
+      {{ botao("configuracoes.alterar_senha", tipo="submit") }}
+    </form>
+  {% endcall %}
+
+  {% call card("configuracoes.preferencias") %}
+    <p class="mb-3 text-muted-foreground">{{ t("configuracoes.preferencias_sub") }}</p>
+    <form method="post" action="/configuracoes/preferencias" class="flex flex-col gap-3">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {% call seletor("tema", "configuracoes.tema", "tema") %}
+        {% for v in temas %}<option value="{{ v }}" {{ "selected" if usuario.tema == v }}>{{ t("configuracoes.tema_" ~ v) }}</option>{% endfor %}
+      {% endcall %}
+      {% call seletor("formato", "configuracoes.formato", "formato_valor") %}
+        {% for v in formatos %}<option value="{{ v }}" {{ "selected" if usuario.formato_valor == v }}>{{ t("configuracoes.formato_" ~ v) }}</option>{% endfor %}
+      {% endcall %}
+      {% call seletor("tela", "configuracoes.tela_inicial", "tela_inicial") %}
+        {% for v in telas %}<option value="{{ v }}" {{ "selected" if usuario.tela_inicial == v }}>{{ v }}</option>{% endfor %}
+      {% endcall %}
+      {% call seletor("padrao", "configuracoes.bd_padrao", "bd_padrao_id") %}
+        <option value="">{{ t("configuracoes.bd_padrao_nenhum") }}</option>
+        {% for b in meus_bds %}<option value="{{ b.id }}" {{ "selected" if usuario.bd_padrao_id == b.id }}>{{ b.nome }}</option>{% endfor %}
+      {% endcall %}
+      {{ botao("configuracoes.salvar_preferencias", tipo="submit") }}
+    </form>
+  {% endcall %}
+
+  {% call card("configuracoes.meus_bds") %}
+    <p class="mb-3 text-muted-foreground">{{ t("configuracoes.meus_bds_sub") }}</p>
+    <ul class="mb-3 flex flex-col gap-2">
+      {% for b in meus_bds %}
+      <li class="flex items-center justify-between rounded-xl border border-border p-3">
+        <span class="font-semibold">{{ b.nome }}</span>
+        {{ badge("papel." ~ (b.papel|lower)) }}
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="mb-3 text-xs text-muted-foreground">{{ t("configuracoes.papeis_legenda") }}</p>
+    <h3 class="mb-2 font-semibold">{{ t("configuracoes.pedir_acesso") }}</h3>
+    <p class="mb-3 text-muted-foreground">{{ t("configuracoes.pedir_acesso_sub") }}</p>
+    {% if sem_vinculo %}
+    <form method="post" action="/configuracoes/pedido" class="flex flex-col gap-3">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {% call seletor("pedido_bd", "configuracoes.pedido_bd", "bd_id") %}
+        {% for b in sem_vinculo %}<option value="{{ b.id }}">{{ b.nome }}</option>{% endfor %}
+      {% endcall %}
+      {{ campo("motivo", "configuracoes.pedido_motivo", "motivo", extra="required") }}
+      {{ botao("configuracoes.pedido_enviar", tipo="submit") }}
+    </form>
+    {% else %}
+    <p class="text-muted-foreground">{{ t("configuracoes.pedido_nenhum_bd") }}</p>
+    {% endif %}
+    {% if meus_pedidos %}
+    <ul class="mt-3 flex flex-col gap-1">
+      {% for bd_nome_pedido, motivo, estado in meus_pedidos %}
+      <li class="flex items-center justify-between"><span>{{ bd_nome_pedido }} · {{ motivo }}</span>{{ badge("configuracoes.pedido_" ~ estado) }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  {% endcall %}
+
+  {% if eh_admin %}
+  {% call card("configuracoes.admin_titulo") %}
+    <p class="mb-3 text-muted-foreground">{{ t("configuracoes.admin_sub") }}</p>
+    <h3 class="mb-2 font-semibold">{{ t("configuracoes.convidar") }}</h3>
+    <form method="post" action="/configuracoes/convites" class="mb-4 flex flex-col gap-3">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {{ campo("convite_email", "configuracoes.convite_email", "email", tipo="email", extra="required") }}
+      {% call seletor("convite_papel", "configuracoes.convite_papel", "papel") %}
+        {% for p in papeis|reverse %}<option value="{{ p }}">{{ t("papel." ~ (p|lower)) }}</option>{% endfor %}
+      {% endcall %}
+      {{ botao("configuracoes.convite_enviar", tipo="submit") }}
+    </form>
+    <h3 class="mb-2 font-semibold">{{ t("configuracoes.membros") }}</h3>
+    <ul class="mb-4 flex flex-col gap-2">
+      {% for m in membros %}
+      <li class="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3">
+        <span class="grow"><span class="font-semibold">{{ m.nome }}</span>
+          <span class="text-muted-foreground">{{ m.email }}</span>
+          {{ badge("configuracoes.membro_pendente" if m.pendente else "configuracoes.membro_ativo") }}</span>
+        <form method="post" action="/configuracoes/membros/{{ m.usuario_id }}/papel" class="flex items-center gap-2">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <select name="papel" aria-label="{{ t('configuracoes.membro_papel') }}"
+                  class="h-8 rounded-4xl border border-input bg-background px-2">
+            {% for p in papeis %}<option value="{{ p }}" {{ "selected" if m.papel == p }}>{{ t("papel." ~ (p|lower)) }}</option>{% endfor %}
+          </select>
+          {{ botao("configuracoes.membro_alterar", tipo="submit", tom="secundario") }}
+        </form>
+        <form method="post" action="/configuracoes/membros/{{ m.usuario_id }}/remover">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          {{ botao("configuracoes.membro_remover", tipo="submit", tom="secundario") }}
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    <h3 class="mb-2 font-semibold">{{ t("configuracoes.pedidos_abertos") }}</h3>
+    {% for p in pedidos_abertos %}
+    <div class="mb-2 flex flex-wrap items-center gap-3 rounded-xl border border-border p-3">
+      <span class="grow"><span class="font-semibold">{{ p.nome }}</span> <span class="text-muted-foreground">{{ p.email }}</span><br>{{ p.motivo }}</span>
+      <form method="post" action="/configuracoes/pedidos/{{ p.id }}/aprovar" class="flex items-center gap-2">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <select name="papel" aria-label="{{ t('configuracoes.membro_papel') }}"
+                class="h-8 rounded-4xl border border-input bg-background px-2">
+          {% for r in papeis|reverse %}<option value="{{ r }}">{{ t("papel." ~ (r|lower)) }}</option>{% endfor %}
+        </select>
+        {{ botao("configuracoes.pedido_aprovar", tipo="submit") }}
+      </form>
+      <form method="post" action="/configuracoes/pedidos/{{ p.id }}/recusar">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        {{ botao("configuracoes.pedido_recusar", tipo="submit", tom="secundario") }}
+      </form>
+    </div>
+    {% else %}
+    <p class="text-muted-foreground">{{ t("configuracoes.pedidos_nenhum") }}</p>
+    {% endfor %}
+  {% endcall %}
+  {% endif %}
+</main>
+{% endblock %}

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 from financeiro import autenticacao, store
+from financeiro import senha as senhas
 from financeiro.i18n import t
 from financeiro.store import acesso
 from financeiro.web.sessao import (
@@ -77,6 +78,48 @@ def entrar(
         path="/",
     )
     return resposta
+
+
+_SENHA_MINIMA = 8
+
+
+@roteador.get("/conta")
+def pagina_conta():
+    return renderizar("conta.html", tema="sistema", csrf=None, erro=None, nome="", email="")
+
+
+@roteador.post("/conta")
+def criar_conta(
+    nome: str = Form(""),
+    email: str = Form(""),
+    senha: str = Form(""),
+    confirmar: str = Form(""),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    """Cria a conta, ou ativa a conta pendente de um convite (mesmo e-mail)."""
+
+    def recusar(status: int, chave: str):
+        return renderizar(
+            "conta.html", status, tema="sistema", csrf=None, erro=t(chave), nome=nome, email=email
+        )
+
+    email = email.strip()
+    if not nome.strip() or "@" not in email:
+        return recusar(400, "conta.erro_nome")
+    if len(senha) < _SENHA_MINIMA:
+        return recusar(400, "conta.erro_senha_curta")
+    if senha != confirmar:
+        return recusar(400, "conta.erro_senha_diferente")
+    existente = acesso.achar_usuario_por_email(conexao, email)
+    if existente is not None and existente.senha_hash is not None:
+        return recusar(409, "conta.erro_ja_ativa")
+    hash_novo = senhas.gerar_hash(senha)
+    if existente is None:
+        acesso.criar_usuario(conexao, email, nome.strip(), hash_novo)
+    else:
+        acesso.atualizar_perfil(conexao, existente.id, nome.strip())
+        acesso.definir_senha(conexao, existente.id, hash_novo)
+    return RedirectResponse("/login", status_code=303)
 
 
 @roteador.get("/")

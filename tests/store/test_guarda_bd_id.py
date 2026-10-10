@@ -13,7 +13,11 @@ from financeiro import store
 # Tabelas que não são de dado de um BD: controle do esquema e usuários (ADR-0002).
 SEM_BD_ID = {"versao_esquema", "bd", "usuario", "sessao", "tentativa_login", "sqlite_sequence"}
 # Funções que cruzam BDs de propósito (@entre_bds). Acrescentar uma exige decisão revisada aqui.
-ENTRE_BDS_PERMITIDAS = {"financeiro.store.acesso.bds_do_usuario"}
+ENTRE_BDS_PERMITIDAS = {
+    "financeiro.store.acesso.bds_do_usuario",
+    "financeiro.store.acesso.bds_sem_vinculo",
+    "financeiro.store.acesso.pedidos_do_usuario",
+}
 PASTA_MIGRACOES = Path(store.__file__).parent / "migracoes"
 
 
