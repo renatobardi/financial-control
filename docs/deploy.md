@@ -1,55 +1,70 @@
 # Deploy no oute-server
 
-Roteiro do deploy da #10. Todo passo no host vai pelo canal de aprovação (`oute-propose`, aprovado
-por você com `oute approve`); nada aqui roda por fora dele.
+Roteiro do deploy da #10. Segue as convenções do host: o LXC e o proxy nascem no repositório `lab`
+(issue, inventário, script, PR); o deploy de uma versão já mergeada e os ajustes pontuais vão pelo
+canal de aprovação (`oute-propose`, aprovado pelo Bardi com `oute approve`). Nada aqui roda por fora
+dele, e nenhum segredo entra em arquivo, comando, issue ou PR.
 
 ## O que vai ao ar
 
-Um serviço (`app`) e um volume (`dados`), pelo `docker-compose.yml`. O SQLite fica em
-`/data/financeiro.db` no volume. TLS fica no nginx do host; o app escuta em `127.0.0.1:8000`.
+Um serviço (`app`) e um volume (`dados`), pelo `docker-compose.yml`, dentro do LXC
+`financial-control-prd`. O SQLite fica em `/data/financeiro.db`, no volume. O compose publica a
+porta em `FINANCEIRO_PUBLICAR` (o endereço e a porta que o `lab` aloca), nunca em `0.0.0.0`.
+Primeiro só na tailnet; internet e TLS pelo nginx do host entram numa segunda etapa.
 
-## Antes do deploy (no repositório)
+## Segredos: vault
 
-1. A imagem constrói na CI (job `imagem`) e `GET /healthz` devolve o commit e a versão do esquema.
-2. Release: o commit da `main` que vai ao ar.
+| Segredo | Onde fica | Como chega ao app |
+|---|---|---|
+| `FINANCEIRO_SEGREDO` (assina o cookie de sessão) | Vaultwarden, item `financial-control-prd FINANCEIRO_SEGREDO` (o Bardi cria) | `/opt/app/.env` no LXC, root, `0600`, entregue por stdin pelo auxiliar interativo do `lab` |
+| Senha do primeiro Admin | Não fica em arquivo: o `criar-admin` pergunta no terminal, sem eco | Só no hash scrypt do banco |
+| Chave de deploy do repositório (privado) | Nasce dentro do LXC; só a metade pública sai | Registrada pelo Bardi como chave **só de leitura** em Settings → Deploy keys |
 
-## Passos no host (cada um é uma proposta no canal)
+Sem `FINANCEIRO_SEGREDO` o app sobe e as sessões caem a cada reinício.
 
-1. **LXC**: criar o contêiner, instalar Docker e `docker compose`, copiar o repositório na versão
-   da release. `FINANCEIRO_COMMIT=<sha>` no `docker compose build`.
-2. **Segredo**: criar o `.env` (root, 0600) com `FINANCEIRO_SEGREDO`. Gerar com
-   `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`. Nunca no git nem na proposta.
-3. **Subir**: `docker compose up -d --build`.
-4. **nginx e TLS** (host): `proxy_pass http://127.0.0.1:8000;`, certificado pelo `certbot`, acesso
-   pela tailnet e pela internet. Conferir com `nginx -t` antes do reload.
-5. **Primeiro Admin**, sem senha em arquivo (o comando pergunta no terminal, sem eco):
+## Passos
+
+1. **Issue e PR no `lab`** (instalação do LXC, inventário e `PORTS.md`). Antes do merge, o auxiliar de
+   instalação roda em `--check` pelo canal (só lê). Depois do merge e do `oute approve`, instala o
+   LXC, clona este repositório em `/opt/app` com a chave de deploy e grava `/opt/app/.env` só com
+   `FINANCEIRO_PUBLICAR`.
+2. **Chave de deploy**: o auxiliar imprime a metade pública; o Bardi a registra no GitHub como chave
+   só de leitura e roda de novo.
+3. **Segredo**: o Bardi cria o item no Vaultwarden e roda, no terminal do host, o auxiliar de segredos
+   do `lab` (`--check` e depois `--apply`). Ele não roda pelo canal.
+4. **Deploy da versão**, pelo canal: `scripts/deploy.sh <sha>` (entra no LXC, confere que o commit
+   está na `main`, faz o checkout, sobe o compose e espera o `/healthz` devolver esse commit).
+5. **Primeiro Admin**, sem senha em arquivo (o comando pergunta no terminal):
 
    ```bash
-   docker compose exec app python -m financeiro criar-admin \
-     --email <e-mail> --nome "<nome>" --bd "<nome do BD>"
+   lxc exec financial-control-prd --cwd /opt/app -- \
+     docker compose exec app python -m financeiro criar-admin \
+       --email <e-mail> --nome "<nome>" --bd "<nome do BD>"
    ```
 
    Repetir não muda a senha nem duplica.
-6. **Backup**: o SQLite é copiado com `.backup` (consistente com o app escrevendo), não copiando o
-   arquivo:
+6. **Backup**: o SQLite é copiado com `.backup`, não copiando o arquivo com o app escrevendo:
 
    ```bash
    docker compose exec app python -m financeiro backup --destino /data/backup/AAAA-MM-DD.db
    ```
 
-   O volume `dados` entra no backup que o host já faz. O comando não sobrescreve arquivo existente.
+   O comando não sobrescreve arquivo existente. A estratégia no inventário do host precisa incluir
+   o volume do LXC.
+7. **nginx e TLS** (segunda etapa, no `lab`): vhost, certificado do `certbot` e, se for o caso, a
+   exposição na internet.
 
 ## Verificação pós-deploy
 
-- `curl -fsS https://<host>/healthz` devolve `{"commit": "<sha da release>", "esquema": <n>}`.
-- Rota sem sessão pela internet devolve 401 (ou leva ao login), e nenhuma devolve dado.
+- `GET /healthz` devolve `{"commit": "<sha da release>", "esquema": <n>}`.
+- Rota sem sessão devolve 401 (ou leva ao login) e nenhuma devolve dado.
 - Restaurar um backup num arquivo de teste e conferir:
   `sqlite3 teste.db "PRAGMA integrity_check"` devolve `ok`.
 - O banco de produção não tem usuário nem dado da semente: `semear` recusa banco com usuário e
-  **não** deve ser rodado em produção.
+  **não** roda em produção.
 
 ## Reverter
 
-O compose guarda o volume. Para voltar uma versão: `git checkout <sha anterior>` e
-`docker compose up -d --build`. Migrações só avançam: se a versão nova aplicou uma migração, o
-`.antes-da-NNNN` ao lado do banco é a cópia de antes dela.
+O volume fica. Para voltar uma versão, rode `scripts/deploy.sh <sha anterior>` pelo canal. Migrações
+só avançam: se a versão nova aplicou uma migração, o `.antes-da-NNNN` ao lado do banco é a cópia de
+antes dela.
