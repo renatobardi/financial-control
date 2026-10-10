@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from financeiro import store
 from financeiro.config import Config
-from financeiro.web import rotas_acesso, rotas_configuracoes
+from financeiro.web import rotas_acesso, rotas_cadastros, rotas_configuracoes
 
 
 def _agora() -> datetime:
@@ -37,6 +37,7 @@ def criar_app(cfg: Config, agora: Callable[[], datetime] = _agora) -> FastAPI:
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
     app.include_router(rotas_acesso.roteador)
     app.include_router(rotas_configuracoes.roteador)
+    app.include_router(rotas_cadastros.roteador)
 
     @app.get("/healthz")
     def healthz() -> dict[str, object]:

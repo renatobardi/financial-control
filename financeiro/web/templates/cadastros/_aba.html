@@ -1,0 +1,99 @@
+{# Fragmento de uma aba de Cadastros: busca, tabela paginada e formulários. #}
+{% macro entrada(c, valor="") %}
+  <label class="flex flex-col gap-1 text-xs font-medium">{{ t(c.rotulo) }}{% if c.opcional %} ({{ t("cadastros.opcional") }}){% endif %}
+    {% if c.tipo == "selecao" %}
+    <select name="{{ c.nome }}" {{ "" if c.opcional else "required" }}
+            class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+      <option value="">{{ t("cadastros.selecione") }}</option>
+      {% for v, texto in c.opcoes %}<option value="{{ v }}">{{ texto }}</option>{% endfor %}
+    </select>
+    {% else %}
+    <input name="{{ c.nome }}" value="{{ valor }}" {{ "" if c.opcional else "required" }}
+           {% if c.tipo == "mes" %}placeholder="2026-10" pattern="\d{4}-(0[1-9]|1[0-2])"{% endif %}
+           {% if c.tipo == "numero" %}inputmode="numeric"{% endif %}
+           class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal">
+    {% endif %}
+  </label>
+{% endmacro %}
+<div id="aba-conteudo" class="flex flex-col gap-4">
+  {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
+  {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+  {% if not pode_editar %}
+  <p class="rounded-xl bg-muted px-3 py-2 text-muted-foreground">{{ t("cadastros.somente_leitura") }}</p>
+  {% endif %}
+
+  {% if conteudo.paginada %}
+  <form hx-get="/cadastros/{{ aba }}/lista" hx-target="#aba-conteudo" hx-swap="outerHTML" class="flex gap-2">
+    <input type="search" name="q" value="{{ q }}" placeholder="{{ t('cadastros.buscar') }}"
+           aria-label="{{ t('cadastros.buscar') }}"
+           class="h-9 grow rounded-4xl border border-input bg-background px-3.5">
+  </form>
+  {% endif %}
+
+  <div class="overflow-x-auto rounded-2xl ring-1 ring-border">
+    <table class="w-full text-left">
+      <thead class="bg-muted text-muted-foreground">
+        <tr>
+          {% for c in conteudo.colunas %}<th class="px-3 py-2 font-medium">{{ t("cadastros.col_" ~ c) }}</th>{% endfor %}
+          {% if pode_editar and conteudo.acoes_linha %}<th class="px-3 py-2"></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for registro_id, celulas, texto in linhas %}
+        <tr class="border-t border-border">
+          {% for celula in celulas %}<td class="px-3 py-2">{{ celula }}</td>{% endfor %}
+          {% if pode_editar and conteudo.acoes_linha %}
+          <td class="px-3 py-2">
+            {% for a in conteudo.acoes_linha %}
+            <form hx-post="/cadastros/{{ aba }}/{{ a.acao }}" hx-target="#aba-conteudo" hx-swap="outerHTML"
+                  method="post" action="/cadastros/{{ aba }}/{{ a.acao }}" class="inline-flex items-center gap-2">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <input type="hidden" name="id" value="{{ registro_id }}">
+              {% if a.com_texto %}
+              <input name="{{ a.com_texto }}" value="{{ texto }}" aria-label="{{ t(a.rotulo) }}"
+                     class="h-8 rounded-4xl border border-input bg-background px-3">
+              {% endif %}
+              <button type="submit" class="rounded-4xl bg-secondary px-3 py-1 text-secondary-foreground">{{ t(a.rotulo) }}</button>
+            </form>
+            {% endfor %}
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td class="px-3 py-4 text-muted-foreground" colspan="{{ conteudo.colunas|length + 1 }}">{{ t("cadastros.nada_encontrado") }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if conteudo.paginada and total_paginas > 1 %}
+  <nav class="flex items-center justify-between" aria-label="{{ t('cadastros.pagina_de', pagina=pagina, total=total_paginas) }}">
+    <span class="text-muted-foreground">{{ t("cadastros.pagina_de", pagina=pagina, total=total_paginas) }}</span>
+    <span class="flex gap-2">
+      {% if pagina > 1 %}
+      <a hx-get="/cadastros/{{ aba }}/lista?pagina={{ pagina - 1 }}&q={{ q|urlencode }}" hx-target="#aba-conteudo" hx-swap="outerHTML"
+         href="/cadastros/{{ aba }}/lista?pagina={{ pagina - 1 }}&q={{ q|urlencode }}" class="underline">{{ t("cadastros.anterior") }}</a>
+      {% endif %}
+      {% if pagina < total_paginas %}
+      <a hx-get="/cadastros/{{ aba }}/lista?pagina={{ pagina + 1 }}&q={{ q|urlencode }}" hx-target="#aba-conteudo" hx-swap="outerHTML"
+         href="/cadastros/{{ aba }}/lista?pagina={{ pagina + 1 }}&q={{ q|urlencode }}" class="underline">{{ t("cadastros.proxima") }}</a>
+      {% endif %}
+    </span>
+  </nav>
+  {% endif %}
+
+  {% if pode_editar %}
+  {% for f in conteudo.formularios %}
+  <form hx-post="/cadastros/{{ aba }}/{{ f.acao }}" hx-target="#aba-conteudo" hx-swap="outerHTML"
+        method="post" action="/cadastros/{{ aba }}/{{ f.acao }}"
+        class="flex flex-col gap-3 rounded-2xl bg-card p-4 ring-1 ring-border">
+    <h2 class="font-semibold">{{ t(f.titulo) }}</h2>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="flex flex-wrap items-end gap-3">
+      {% for c in f.campos %}{{ entrada(c, ano if c.nome == "ano" else "") }}{% endfor %}
+      <button type="submit" class="h-9 rounded-4xl bg-primary px-4 font-medium text-primary-foreground">{{ t(f.enviar) }}</button>
+    </div>
+  </form>
+  {% endfor %}
+  {% endif %}
+</div>
