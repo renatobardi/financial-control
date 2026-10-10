@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bloco_lazy %}
+{% block titulo %}{{ t("realizado.titulo") }}{% endblock %}
+{% block corpo %}
+<header class="flex items-center justify-between border-b border-border px-6 py-3">
+  <a href="/" class="font-semibold">{{ t("configuracoes.voltar") }}</a>
+  <span class="text-muted-foreground">{{ t("inicio.bd_papel", bd=bd_nome, papel=papel) }}</span>
+</header>
+<main class="mx-auto flex max-w-6xl flex-col gap-4 p-6">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">{{ t("realizado.titulo") }} · {{ ano }}</h1>
+    <p class="text-muted-foreground">{{ t("realizado.sub") }}</p>
+  </div>
+  <form method="get" action="/realizado" class="flex flex-wrap items-end gap-3">
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("realizado.ano") }}
+      <input name="ano" value="{{ ano }}" inputmode="numeric" class="h-9 w-24 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal">
+    </label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("realizado.agrupar") }}
+      <select name="dimensao" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        {% for d in dimensoes %}<option value="{{ d }}" {{ "selected" if d == dimensao }}>{{ t("realizado.dim_" ~ d) }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("realizado.origem") }}
+      <select name="origem" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        {% for o in origens %}<option value="{{ o }}" {{ "selected" if o == origem }}>{{ t("realizado.origem_" ~ o) }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("realizado.base") }}
+      <select name="base" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        {% for b in bases %}<option value="{{ b }}" {{ "selected" if b == base }}>{{ t("realizado.base_" ~ b) }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="h-9 rounded-4xl bg-secondary px-4 font-medium text-secondary-foreground">{{ t("realizado.aplicar") }}</button>
+  </form>
+  {{ bloco_lazy("/realizado/tabela?ano=" ~ ano ~ "&dimensao=" ~ dimensao ~ "&origem=" ~ origem ~ "&base=" ~ base, gatilho="load", altura="h-64") }}
+</main>
+{% endblock %}

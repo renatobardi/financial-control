@@ -1,0 +1,144 @@
+{% macro enviar(chave, tom="primario") %}
+  <button type="submit" class="h-9 rounded-4xl px-4 font-medium {{ 'bg-primary text-primary-foreground' if tom == 'primario' else 'bg-secondary text-secondary-foreground' }}">{{ t(chave) }}</button>
+{% endmacro %}
+<div id="pdd" class="flex flex-col gap-4">
+  {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
+  {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+  {% if not pode_editar %}
+  <p class="rounded-xl bg-muted px-3 py-2 text-muted-foreground">{{ t("orcamento.somente_leitura") }}</p>
+  {% endif %}
+
+  <nav class="flex flex-wrap items-center gap-2" aria-label="{{ t('orcamento.revisao') }}">
+    {% for r in revisoes %}
+    <a href="/orcamento?rev={{ r.id }}&base={{ base }}"
+       hx-get="/orcamento/tabela?rev={{ r.id }}&base={{ base }}" hx-target="#pdd" hx-swap="outerHTML"
+       class="rounded-4xl px-3 py-1.5 {{ 'bg-primary text-primary-foreground' if selecionada and r.id == selecionada.id else 'bg-muted text-muted-foreground' }}">
+      {{ r.rotulo }}{% if vigente and r.id == vigente.id %} · {{ t("orcamento.vigente") }}{% endif %}
+    </a>
+    {% endfor %}
+    {% if pode_editar %}
+    <form method="post" action="/orcamento/revisoes" hx-post="/orcamento/revisoes" hx-target="#pdd" hx-swap="outerHTML">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {{ enviar("orcamento.nova_revisao", "secundario") }}
+    </form>
+    {% endif %}
+  </nav>
+
+  {% if not selecionada %}
+  <p class="text-muted-foreground">{{ t("orcamento.sem_revisao") }}</p>
+  {% else %}
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-muted-foreground">
+      {% if selecionada.estado == "rascunho" %}
+      {{ t("orcamento.info_rascunho", markup=percentual(markup)) }}
+      {% else %}
+      {{ t("orcamento.info_aprovada", em=data_hora(selecionada.aprovada_em), markup=percentual(markup)) }}
+      {% endif %}
+    </p>
+    {% if pode_editar and selecionada.estado == "rascunho" %}
+    <div class="flex gap-2">
+      <form method="post" action="/orcamento/{{ selecionada.id }}/descartar"
+            hx-post="/orcamento/{{ selecionada.id }}/descartar" hx-target="#pdd" hx-swap="outerHTML">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        {{ enviar("orcamento.descartar", "secundario") }}
+      </form>
+      <form method="post" action="/orcamento/{{ selecionada.id }}/aprovar"
+            hx-post="/orcamento/{{ selecionada.id }}/aprovar" hx-target="#pdd" hx-swap="outerHTML">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        {{ enviar("orcamento.aprovar") }}
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <form method="get" action="/orcamento" class="flex flex-wrap items-end gap-3">
+    <input type="hidden" name="rev" value="{{ selecionada.id }}">
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("orcamento.base") }}
+      <select name="base" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        <option value="bruto" {{ "selected" if base == "bruto" }}>{{ t("orcamento.base_bruto") }}</option>
+        <option value="liquido" {{ "selected" if base == "liquido" }}>{{ t("orcamento.base_liquido") }}</option>
+      </select>
+    </label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("orcamento.comparar") }}
+      <select name="comparar" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        <option value="">{{ t("orcamento.sem_comparacao") }}</option>
+        {% for r in revisoes if r.id != selecionada.id %}
+        <option value="{{ r.id }}" {{ "selected" if comparar and comparar.id == r.id }}>{{ r.rotulo }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {{ enviar("realizado.aplicar", "secundario") }}
+  </form>
+
+  <div class="overflow-x-auto rounded-2xl ring-1 ring-border">
+    <table class="w-full text-left">
+      <thead class="bg-muted text-muted-foreground"><tr>
+        <th class="px-3 py-2 font-medium">{{ t("orcamento.col_iniciativa") }}</th>
+        <th class="px-3 py-2 font-medium">{{ t("orcamento.col_tipo") }}</th>
+        <th class="px-3 py-2 text-right font-medium">{{ t("orcamento.col_bruto") }}</th>
+        <th class="px-3 py-2 text-right font-medium">{{ t("orcamento.col_liquido") }}</th>
+        <th class="px-3 py-2 text-right font-medium">{{ t("orcamento.col_percentual") }}</th>
+        {% if comparar %}<th class="px-3 py-2 text-right font-medium">{{ t("orcamento.col_delta", revisao=comparar.rotulo) }}</th>{% endif %}
+        <th class="px-3 py-2 text-right font-medium">{{ t("orcamento.col_total_ano") }}</th>
+        <th class="px-3 py-2 text-right font-medium">{{ t("orcamento.col_gap") }}</th>
+        {% if pode_editar and selecionada.estado == "rascunho" %}<th class="px-3 py-2"></th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for l in linhas %}
+        <tr class="border-t border-border">
+          <td class="px-3 py-2">{{ l.iniciativa }}</td>
+          <td class="px-3 py-2">{{ l.tipo }}</td>
+          <td class="px-3 py-2 text-right">{{ moeda(l.bruto) }}</td>
+          <td class="px-3 py-2 text-right">{{ moeda(l.liquido) }}</td>
+          <td class="px-3 py-2 text-right">{{ l.percentual }}</td>
+          {% if comparar %}<td class="px-3 py-2 text-right">{{ "—" if l.delta is none else moeda(l.delta) }}</td>{% endif %}
+          <td class="px-3 py-2 text-right">{{ moeda(l.total_ano) }}</td>
+          <td class="px-3 py-2 text-right {{ 'text-destructive' if l.gap < 0 }}">{{ moeda(l.gap) }}</td>
+          {% if pode_editar and selecionada.estado == "rascunho" %}
+          <td class="px-3 py-2">
+            <form method="post" action="/orcamento/{{ selecionada.id }}/linhas/remover"
+                  hx-post="/orcamento/{{ selecionada.id }}/linhas/remover" hx-target="#pdd" hx-swap="outerHTML">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <input type="hidden" name="iniciativa_id" value="{{ l.iniciativa_id }}">
+              <input type="hidden" name="tipo" value="{{ l.tipo }}">
+              {{ enviar("orcamento.remover", "secundario") }}
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td class="px-3 py-4 text-muted-foreground" colspan="9">{{ t("orcamento.sem_linhas") }}</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr class="border-t border-border font-semibold">
+        <td class="px-3 py-2" colspan="2">{{ t("orcamento.total") }}</td>
+        <td class="px-3 py-2 text-right" colspan="{{ 6 if comparar else 5 }}">{{ moeda(total) }}</td>
+      </tr></tfoot>
+    </table>
+  </div>
+  <p class="text-xs text-muted-foreground">{{ t("realizado.gap_legenda") }}</p>
+
+  {% if pode_editar and selecionada.estado == "rascunho" %}
+  <form method="post" action="/orcamento/{{ selecionada.id }}/linhas"
+        hx-post="/orcamento/{{ selecionada.id }}/linhas" hx-target="#pdd" hx-swap="outerHTML"
+        class="flex flex-wrap items-end gap-3 rounded-2xl bg-card p-4 ring-1 ring-border">
+    <h2 class="w-full font-semibold">{{ t("orcamento.nova_linha") }}</h2>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("orcamento.col_iniciativa") }}
+      <select name="iniciativa_id" required class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        {% for i in iniciativas %}<option value="{{ i.id }}">{{ i.codigo }} · {{ i.nome }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("orcamento.col_tipo") }}
+      <select name="tipo" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        {% for tp in tipos %}<option value="{{ tp }}">{{ tp }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("orcamento.nova_linha_valor") }}
+      <input name="valor" required inputmode="decimal" class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal">
+    </label>
+    {{ enviar("orcamento.adicionar") }}
+  </form>
+  {% endif %}
+  {% endif %}
+</div>

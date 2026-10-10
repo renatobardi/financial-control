@@ -15,6 +15,8 @@ from financeiro.web import (
     rotas_cargas,
     rotas_configuracoes,
     rotas_fechamento,
+    rotas_orcamento,
+    rotas_realizado,
 )
 
 
@@ -46,6 +48,8 @@ def criar_app(cfg: Config, agora: Callable[[], datetime] = _agora) -> FastAPI:
     app.include_router(rotas_cadastros.roteador)
     app.include_router(rotas_cargas.roteador)
     app.include_router(rotas_fechamento.roteador)
+    app.include_router(rotas_orcamento.roteador)
+    app.include_router(rotas_realizado.roteador)
 
     @app.get("/healthz")
     def healthz() -> dict[str, object]:
