@@ -1,0 +1,126 @@
+<div id="pessoas" class="flex flex-col gap-4">
+  {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
+  {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+  {% if not pode_editar %}
+  <p class="rounded-xl bg-muted px-3 py-2 text-muted-foreground">{{ t("pessoas.somente_leitura") }}</p>
+  {% endif %}
+
+  <form method="get" action="/pessoas" hx-get="/pessoas/lista" hx-target="#pessoas" hx-swap="outerHTML"
+        class="flex flex-wrap items-end gap-3">
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.de") }}
+      <input name="de" value="{{ de }}" class="h-9 w-32 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.ate") }}
+      <input name="ate" value="{{ ate }}" class="h-9 w-32 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.unidade") }}
+      <select name="unidade" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        <option value="">{{ t("pessoas.todas_unidades") }}</option>
+        {% for u in unidades %}<option value="{{ u.id }}" {{ "selected" if unidade == u.id|string }}>{{ u.tipo }} · {{ u.nome }}</option>{% endfor %}
+      </select></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.buscar") }}
+      <input type="search" name="busca" value="{{ busca }}" class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+    <button type="submit" class="h-9 rounded-4xl bg-secondary px-4 font-medium text-secondary-foreground">{{ t("pessoas.aplicar") }}</button>
+  </form>
+
+  <dl class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+    {% for rotulo, valor in [
+      ("pessoas.kpi_ativos", linhas|length), ("pessoas.kpi_funcionarios", n_funcionarios),
+      ("pessoas.kpi_terceiros", n_terceiros), ("pessoas.kpi_vagas", vagas_abertas),
+      ("pessoas.kpi_custo", moeda(custo_total)),
+    ] %}
+    <div class="rounded-xl bg-muted p-3"><dt class="text-xs text-muted-foreground">{{ t(rotulo) }}</dt><dd class="text-lg font-semibold">{{ valor }}</dd></div>
+    {% endfor %}
+  </dl>
+
+  <section class="flex flex-col gap-2">
+    <h2 class="font-semibold">{{ t("pessoas.ativos_por_mes") }} · {{ ano }}</h2>
+    <div class="overflow-x-auto rounded-2xl ring-1 ring-border">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-muted text-muted-foreground"><tr>
+          {% for n in range(1, 13) %}<th class="px-2 py-2 text-right font-medium">{{ mes(ano, n) }}</th>{% endfor %}
+          <th class="px-3 py-2 text-right font-medium">{{ ano }}</th>
+        </tr></thead>
+        <tbody><tr>
+          {% for v in ativos_por_mes %}<td class="px-2 py-2 text-right">{{ v }}</td>{% endfor %}
+          <td class="px-3 py-2 text-right font-semibold">{{ distintos }}</td>
+        </tr></tbody>
+      </table>
+    </div>
+    <p class="text-xs text-muted-foreground">{{ t("pessoas.ativos_nota", n=distintos) }}</p>
+  </section>
+
+  <div class="overflow-x-auto rounded-2xl ring-1 ring-border">
+    <table class="w-full text-left">
+      <thead class="bg-muted text-muted-foreground"><tr>
+        {% for c in ["col_matricula", "col_nome", "col_unidade", "col_cargo", "col_vinculo", "col_meses", "col_horas", "col_custo", "col_desligamento"] %}
+        <th class="px-3 py-2 font-medium">{{ t("pessoas." ~ c) }}</th>
+        {% endfor %}
+        {% if pode_editar %}<th class="px-3 py-2"></th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for p in linhas %}
+        <tr class="border-t border-border">
+          <td class="px-3 py-2">{{ p.matricula }}</td>
+          <td class="px-3 py-2">{{ p.nome }}</td>
+          <td class="px-3 py-2">{{ p.unidade }}</td>
+          <td class="px-3 py-2">{{ p.cargo }} · {{ p.empresa }}</td>
+          <td class="px-3 py-2">{{ t("pessoas.vinculo_" ~ p.vinculo) }}</td>
+          <td class="px-3 py-2 text-right">{{ p.meses_ativos }}</td>
+          <td class="px-3 py-2 text-right">{{ numero(p.horas) }}</td>
+          <td class="px-3 py-2 text-right">{{ moeda(p.custo_centavos) }}</td>
+          <td class="px-3 py-2">{{ p.desligamento or t("pessoas.ativo") }}</td>
+          {% if pode_editar %}
+          <td class="px-3 py-2">
+            <form method="post" action="/pessoas/{{ p.id }}" hx-post="/pessoas/{{ p.id }}" hx-target="#pessoas" hx-swap="outerHTML"
+                  class="inline-flex items-center gap-2">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <input name="desligamento" value="{{ p.desligamento or '' }}" placeholder="2026-12" aria-label="{{ t('pessoas.col_desligamento') }}"
+                     class="h-8 w-28 rounded-4xl border border-input bg-background px-3">
+              <button type="submit" class="rounded-4xl bg-secondary px-3 py-1 text-secondary-foreground">{{ t("pessoas.editar") }}</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td class="px-3 py-4 text-muted-foreground" colspan="10">{{ t("pessoas.vazio") }}</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr class="border-t border-border font-semibold">
+        <td class="px-3 py-2" colspan="6">{{ t("pessoas.total_filtro") }}</td>
+        <td class="px-3 py-2 text-right">{{ numero(horas_total) }}</td>
+        <td class="px-3 py-2 text-right">{{ moeda(custo_total) }}</td>
+        <td colspan="{{ 2 if pode_editar else 1 }}"></td>
+      </tr></tfoot>
+    </table>
+  </div>
+  {% if pode_editar %}<p class="text-xs text-muted-foreground">{{ t("pessoas.editar_nota") }}</p>{% endif %}
+
+  {% if pode_editar %}
+  <form method="post" action="/pessoas" hx-post="/pessoas" hx-target="#pessoas" hx-swap="outerHTML"
+        class="flex flex-col gap-3 rounded-2xl bg-card p-4 ring-1 ring-border">
+    <h2 class="font-semibold">{{ t("pessoas.nova") }}</h2>
+    <p class="text-xs text-muted-foreground">{{ t("pessoas.nova_nota") }}</p>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="flex flex-wrap items-end gap-3">
+      <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.c_matricula") }}
+        <input name="matricula" required class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+      <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.c_nome") }}
+        <input name="nome" required class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+      <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.c_unidade") }}
+        <select name="org_id" required class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+          {% for s in squads %}<option value="{{ s.id }}">{{ s.nome }}</option>{% endfor %}
+        </select></label>
+      <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.c_cargo") }}
+        <select name="cargo_id" required class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+          {% for c in cargos %}<option value="{{ c.id }}">{{ c.nome }} · {{ c.empresa }}</option>{% endfor %}
+        </select></label>
+      <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.c_tema") }}
+        <select name="tema_id" required class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+          {% for tm in temas %}<option value="{{ tm.id }}">{{ tm.codigo }} · {{ tm.nome }}</option>{% endfor %}
+        </select></label>
+      <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.c_inicio") }}
+        <input name="admissao" required placeholder="2026-10" class="h-9 w-32 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+      <button type="submit" class="h-9 rounded-4xl bg-primary px-4 font-medium text-primary-foreground">{{ t("pessoas.incluir") }}</button>
+    </div>
+  </form>
+  {% endif %}
+</div>

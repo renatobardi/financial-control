@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from financeiro import consumo, custo, i18n
+from financeiro import consumo, custo, i18n, vigencia
 from financeiro.store import Conexao, ErroDeIntegridade, acesso, cadastros
 from financeiro.store import compras as armazem
 from financeiro.store import consumo as armazem_consumo
@@ -177,6 +177,10 @@ def definir_valor(
         raise ComprasInvalido("Ordem não encontrada neste BD.")
     if atual.status == "cancelada":
         raise ComprasInvalido("Ordem cancelada não recebe valor.")
+    try:
+        vigencia.validar_mes(mes)
+    except ValueError as erro:
+        raise ComprasInvalido("Informe o mês no formato AAAA-MM.") from erro
     if isinstance(liquido_centavos, bool) or not isinstance(liquido_centavos, int):
         raise TypeError("valor em centavos inteiros")
     if liquido_centavos < 0:
