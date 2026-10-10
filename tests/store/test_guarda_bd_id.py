@@ -45,7 +45,10 @@ def violacoes(modulos: list[types.ModuleType], tabelas: set[str]) -> list[str]:
             if nome.startswith("_") or funcao.__module__ != modulo.__name__:
                 continue
             fonte = inspect.getsource(funcao)
-            cita = any(re.search(rf"\b{re.escape(t)}\b", fonte) for t in tabelas)
+            cita = any(
+                re.search(rf"\b(?:FROM|JOIN|INTO|UPDATE)\s+{re.escape(t)}\b", fonte, re.I)
+                for t in tabelas
+            )
             if getattr(funcao, "__entre_bds__", False):
                 continue
             if cita and "bd_id" not in inspect.signature(funcao).parameters:
