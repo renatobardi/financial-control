@@ -56,6 +56,8 @@ select = ["E", "F", "W", "I", "UP", "B", "TID251"]
 "financeiro/store/**" = ["TID251"]
 # Teste de fumaça do store abre o banco direto para conferir o resultado de fora.
 "tests/store/**" = ["TID251"]
+# Linhas de CSV e SQL de preparação nos testes ficam mais legíveis inteiras.
+"tests/**" = ["E501"]
 
 [tool.ruff.lint.flake8-bugbear]
 # Depends e Form são o idioma do FastAPI em argumento padrão.
