@@ -44,3 +44,7 @@ Entrega por PR; merge só quando o Bardi pedir. Backlog nas issues do repo.
 ## Configuração
 
 Só `financeiro/config.py` lê o ambiente: `FINANCEIRO_BD` (padrão `dados/financeiro.db`) e `FINANCEIRO_COMMIT` (padrão `desconhecido`). Variável nova entra lá e aqui. O app sobe sem nenhuma.
+
+## Front
+
+HTML no servidor (Jinja2 + HTMX), Tailwind 4 standalone compilado no `Dockerfile` a partir de `financeiro/web/styles/input.css` (tokens do Kubo). `static/app.css` não vai para o git. Texto visível vem só do catálogo `financeiro/i18n/pt-BR.toml`: um teste falha se um template tiver texto solto. Bloco pesado de tela usa a macro `bloco_lazy(url)`.

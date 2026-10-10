@@ -14,6 +14,10 @@ def _uvicorn(app: object, *, host: str, port: int) -> None:
     uvicorn.run(app, host=host, port=port)
 
 
+def _opcao(argumentos: Sequence[str], nome: str, padrao: str) -> str:
+    return argumentos[argumentos.index(nome) + 1] if nome in argumentos else padrao
+
+
 def _listar_comandos() -> None:
     print(t("cli.uso"), file=sys.stderr)
     print(f"  servir       {t('cli.servir')}", file=sys.stderr)
@@ -28,8 +32,9 @@ def main(argv: Sequence[str], *, servidor: Callable[..., None] = _uvicorn) -> in
         return 2
     comando, *resto = argv
     if comando == "servir":
-        porta = int(resto[resto.index("--porta") + 1]) if "--porta" in resto else 8000
-        servidor(criar_app(config.carregar()), host="127.0.0.1", port=porta)
+        porta = int(_opcao(resto, "--porta", "8000"))
+        host = _opcao(resto, "--host", "127.0.0.1")
+        servidor(criar_app(config.carregar()), host=host, port=porta)
         return 0
     if comando in _PLANEJADOS:
         print(t("cli.nao_implementado", comando=comando), file=sys.stderr)

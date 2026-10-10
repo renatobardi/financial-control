@@ -6,3 +6,4 @@ __pycache__/
 *.db
 *.db-wal
 *.db-shm
+financeiro/web/static/app.css
