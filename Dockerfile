@@ -28,6 +28,8 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     PYTHONUNBUFFERED=1 \
     FINANCEIRO_BD=/data/financeiro.db
+ARG FINANCEIRO_COMMIT=desconhecido
+ENV FINANCEIRO_COMMIT=${FINANCEIRO_COMMIT}
 WORKDIR /app
 # Camada de dependências primeiro: não invalida o cache a cada mudança de código.
 COPY pyproject.toml uv.lock ./
