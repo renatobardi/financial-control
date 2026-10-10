@@ -7,9 +7,11 @@ from financeiro.i18n.formatadores import (
     ler_percentual,
     mes,
     moeda,
+    moeda_mi,
     moeda_mil,
     numero,
     percentual,
+    valor_abreviado,
 )
 
 __all__ = [
@@ -19,8 +21,10 @@ __all__ = [
     "ler_percentual",
     "mes",
     "moeda",
+    "moeda_mi",
     "moeda_mil",
     "numero",
     "percentual",
     "t",
+    "valor_abreviado",
 ]

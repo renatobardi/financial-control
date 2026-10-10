@@ -9,7 +9,13 @@ from fastapi.staticfiles import StaticFiles
 
 from financeiro import store
 from financeiro.config import Config
-from financeiro.web import rotas_acesso, rotas_cadastros, rotas_cargas, rotas_configuracoes
+from financeiro.web import (
+    rotas_acesso,
+    rotas_cadastros,
+    rotas_cargas,
+    rotas_configuracoes,
+    rotas_fechamento,
+)
 
 
 def _agora() -> datetime:
@@ -39,6 +45,7 @@ def criar_app(cfg: Config, agora: Callable[[], datetime] = _agora) -> FastAPI:
     app.include_router(rotas_configuracoes.roteador)
     app.include_router(rotas_cadastros.roteador)
     app.include_router(rotas_cargas.roteador)
+    app.include_router(rotas_fechamento.roteador)
 
     @app.get("/healthz")
     def healthz() -> dict[str, object]:

@@ -93,3 +93,22 @@ def test_ler_percentual_recusa_texto_invalido():
 
 def test_data_hora_iso_para_o_formato_brasileiro():
     assert i18n.data_hora("2026-10-08T09:14:05Z") == "08/10/2026 09:14"
+
+
+@pytest.mark.parametrize(
+    ("centavos", "esperado"),
+    [
+        (223_300_000, "R$ 2,23 mi"),
+        (0, "R$ 0,00 mi"),
+        (-150_000_000, "−R$ 1,50 mi"),
+        (99_999_999, "R$ 1,00 mi"),
+        (123_456_789, "R$ 1,23 mi"),
+    ],
+)
+def test_moeda_mi_com_duas_casas_arredondando_para_cima_no_meio(centavos, esperado):
+    assert i18n.moeda_mi(centavos) == esperado
+
+
+def test_valor_abreviado_segue_a_preferencia_do_usuario():
+    assert i18n.valor_abreviado(223_300_000, "mi") == "R$ 2,23 mi"
+    assert i18n.valor_abreviado(223_300_000, "mil") == "R$ 2.233 mil"

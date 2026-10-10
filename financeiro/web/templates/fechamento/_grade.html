@@ -1,0 +1,71 @@
+<div id="grade-fechamento" class="flex flex-col gap-4">
+  {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
+  {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+  {% if not pode_editar %}
+  <p class="rounded-xl bg-muted px-3 py-2 text-muted-foreground">{{ t("fechamento_tela.somente_leitura") }}</p>
+  {% else %}
+  <label class="flex flex-col gap-1 text-xs font-medium">{{ t("fechamento_tela.motivo") }}
+    <input id="motivo" type="text" class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal">
+  </label>
+  {% endif %}
+
+  <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    {% for m in meses %}
+    {% set rot = rotulo(m.mes) %}
+    <li class="flex flex-col gap-2 rounded-2xl bg-card p-4 ring-1 ring-border">
+      <div class="flex items-center justify-between">
+        <span class="font-semibold">{{ rot }}</span>
+        <span class="rounded-4xl px-2.5 py-0.5 text-xs {{ 'bg-primary text-primary-foreground' if m.estado == 'fechado' else 'bg-muted text-muted-foreground' }}">
+          {% if m.estado == "fechado" %}{{ t("fechamento_tela.fechado") }}
+          {% elif m.pode_fechar %}{{ t("fechamento_tela.aberto_proximo") }}
+          {% else %}{{ t("fechamento_tela.aberto") }}{% endif %}
+        </span>
+      </div>
+      <div class="text-lg font-semibold">{{ valor_abreviado(m.totais.total_centavos, formato) }}</div>
+      <div class="text-xs text-muted-foreground">
+        {{ t("fechamento_tela.detalhe", pessoas=m.pessoas, horas=numero(m.totais.horas), ordens=m.ordens) }}
+      </div>
+      <div class="text-xs {{ 'text-destructive' if m.pode_fechar and pendentes else 'text-muted-foreground' }}">
+        {% if m.estado == "fechado" %}{{ t("fechamento_tela.congelado") }}
+        {% elif m.pode_fechar and pendentes %}{{ t("fechamento_tela.pendencia", n=pendentes) }}
+        {% elif m.pode_fechar %}{{ t("fechamento_tela.pronto") }}
+        {% else %}{{ t("fechamento_tela.fecha_apos", mes=anterior(m.mes)) }}{% endif %}
+      </div>
+      {% if pode_editar and m.pode_fechar %}
+      <form method="post" action="/fechamento/{{ m.mes }}/fechar" hx-post="/fechamento/{{ m.mes }}/fechar"
+            hx-target="#grade-fechamento" hx-swap="outerHTML">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="ano" value="{{ ano }}">
+        <button type="submit" class="rounded-4xl bg-primary px-3 py-1 text-primary-foreground">{{ t("fechamento_tela.fechar", mes=rot) }}</button>
+      </form>
+      {% elif pode_editar and m.pode_reabrir %}
+      <form method="post" action="/fechamento/{{ m.mes }}/reabrir" hx-post="/fechamento/{{ m.mes }}/reabrir"
+            hx-target="#grade-fechamento" hx-swap="outerHTML" hx-include="#motivo">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="ano" value="{{ ano }}">
+        <input type="text" name="motivo" placeholder="{{ t('fechamento_tela.motivo') }}" required
+               class="mb-2 h-8 w-full rounded-4xl border border-input bg-background px-3 text-sm">
+        <button type="submit" class="rounded-4xl bg-secondary px-3 py-1 text-secondary-foreground">{{ t("fechamento_tela.reabrir", mes=rot) }}</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <section class="flex flex-col gap-2">
+    <h2 class="font-semibold">{{ t("fechamento_tela.log") }}</h2>
+    {% if log %}
+    <ul class="flex flex-col gap-1">
+      {% for e in log %}
+      <li class="rounded-xl bg-muted px-3 py-2">
+        {{ data_hora(e.em) }} ·
+        {{ t("fechamento_tela.log_fechou" if e.acao == "fechou" else "fechamento_tela.log_reabriu", mes=rotulo(e.mes), autor=e.autor) }}
+        {% if e.motivo %} — {{ t("fechamento_tela.log_motivo", motivo=e.motivo) }}{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted-foreground">{{ t("fechamento_tela.log_vazio") }}</p>
+    {% endif %}
+  </section>
+</div>
