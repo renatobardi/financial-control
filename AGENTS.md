@@ -40,3 +40,7 @@ Só as de `pyproject.toml`. Dependência nova pede decisão do Bardi. Sem ORM.
 ## Git
 
 Entrega por PR; merge só quando o Bardi pedir. Backlog nas issues do repo.
+
+## Configuração
+
+Só `financeiro/config.py` lê o ambiente: `FINANCEIRO_BD` (padrão `dados/financeiro.db`) e `FINANCEIRO_COMMIT` (padrão `desconhecido`). Variável nova entra lá e aqui. O app sobe sem nenhuma.

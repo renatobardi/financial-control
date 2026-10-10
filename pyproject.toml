@@ -28,7 +28,11 @@ testpaths = ["tests"]
 pythonpath = ["."]
 # tests/ espelha financeiro/ sem __init__.py: nomes de arquivo podem se repetir entre pastas.
 addopts = "--import-mode=importlib"
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # O TestClient do Starlette pede httpx2; a dependência decidida no ADR-0001 é httpx.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
 
 [tool.ruff]
 target-version = "py312"

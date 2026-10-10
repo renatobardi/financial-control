@@ -31,11 +31,21 @@ def _copiar_antes(conexao: sqlite3.Connection, primeira: int) -> None:
         backup(conexao, f"{arquivo}.antes-da-{primeira:04d}")
 
 
+def versao_atual(conexao: sqlite3.Connection) -> int:
+    """Versão do esquema aplicada no banco; 0 se nenhuma migração rodou."""
+    existe = conexao.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'versao_esquema'"
+    ).fetchone()
+    if existe is None:
+        return 0
+    return conexao.execute("SELECT COALESCE(MAX(versao), 0) FROM versao_esquema").fetchone()[0]
+
+
 def migrar(conexao: sqlite3.Connection, pasta: Path) -> int:
     """Aplica as migrações `NNNN_nome.sql` pendentes e devolve a versão do esquema."""
     migracoes = _listar(pasta)
     conexao.execute("CREATE TABLE IF NOT EXISTS versao_esquema (versao INTEGER PRIMARY KEY)")
-    atual = conexao.execute("SELECT COALESCE(MAX(versao), 0) FROM versao_esquema").fetchone()[0]
+    atual = versao_atual(conexao)
     pendentes = [(versao, arquivo) for versao, arquivo in migracoes if versao > atual]
     if pendentes and atual > 0:
         _copiar_antes(conexao, pendentes[0][0])
