@@ -2,6 +2,8 @@ import re
 import sqlite3
 from pathlib import Path
 
+from financeiro.store.backup import backup
+
 _NOME = re.compile(r"^(\d{4})_[a-z0-9_]+\.sql$")
 
 
@@ -22,16 +24,28 @@ def _listar(pasta: Path) -> list[tuple[int, Path]]:
     return migracoes
 
 
+def _copiar_antes(conexao: sqlite3.Connection, primeira: int) -> None:
+    """Guarda `<banco>.antes-da-NNNN`. Banco em memória não tem arquivo para copiar."""
+    arquivo = conexao.execute("PRAGMA database_list").fetchone()[2]
+    if arquivo:
+        backup(conexao, f"{arquivo}.antes-da-{primeira:04d}")
+
+
 def migrar(conexao: sqlite3.Connection, pasta: Path) -> int:
     """Aplica as migrações `NNNN_nome.sql` pendentes e devolve a versão do esquema."""
     migracoes = _listar(pasta)
     conexao.execute("CREATE TABLE IF NOT EXISTS versao_esquema (versao INTEGER PRIMARY KEY)")
     atual = conexao.execute("SELECT COALESCE(MAX(versao), 0) FROM versao_esquema").fetchone()[0]
-    for versao, arquivo in migracoes:
-        if versao <= atual:
-            continue
-        conexao.executescript(arquivo.read_text())
-        conexao.execute("INSERT INTO versao_esquema (versao) VALUES (?)", (versao,))
-        conexao.commit()
+    pendentes = [(versao, arquivo) for versao, arquivo in migracoes if versao > atual]
+    if pendentes and atual > 0:
+        _copiar_antes(conexao, pendentes[0][0])
+    for versao, arquivo in pendentes:
+        try:
+            conexao.executescript("BEGIN;\n" + arquivo.read_text())
+            conexao.execute("INSERT INTO versao_esquema (versao) VALUES (?)", (versao,))
+            conexao.commit()
+        except Exception:
+            conexao.rollback()
+            raise
         atual = versao
     return atual
