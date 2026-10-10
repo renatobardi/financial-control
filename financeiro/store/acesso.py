@@ -246,3 +246,12 @@ def bds_sem_vinculo(conexao: sqlite3.Connection, usuario_id: int) -> list[BdSimp
         (usuario_id,),
     ).fetchall()
     return [BdSimples(*linha) for linha in linhas]
+
+
+def achar_bd_por_nome(conexao: sqlite3.Connection, nome: str) -> int | None:
+    linha = conexao.execute("SELECT id FROM bd WHERE nome = ?", (nome,)).fetchone()
+    return linha[0] if linha else None
+
+
+def contar_usuarios(conexao: sqlite3.Connection) -> int:
+    return conexao.execute("SELECT COUNT(*) FROM usuario").fetchone()[0]

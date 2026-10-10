@@ -16,3 +16,34 @@ jobs:
       - run: uv sync --frozen
       - run: make test
       - run: make lint
+
+  # Constrói a imagem de verdade e confere o /healthz, o CSS compilado e a página de login.
+  # O runner é x86_64: o binário do Tailwind e o SHA256 são os de linux-x64 da mesma versão.
+  imagem:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Constrói a imagem
+        run: >
+          docker build
+          --build-arg TAILWIND_ARCH=linux-x64
+          --build-arg TAILWIND_SHA256=5036c4fb4328e0bcdbb6065c70d8ac9452e0d4c947113a788a8f94fd390425c1
+          --build-arg FINANCEIRO_COMMIT=${{ github.sha }}
+          -t financeiro:ci .
+      - name: Sobe e confere
+        run: |
+          docker run -d --name fin -p 8000:8000 \
+            -e FINANCEIRO_SEGREDO=segredo-so-de-ci -e FINANCEIRO_COOKIE_SEGURO=0 financeiro:ci
+          for i in $(seq 1 30); do curl -fsS localhost:8000/healthz >/dev/null && break; sleep 1; done
+          curl -fsS localhost:8000/healthz | tee /tmp/health.json
+          python3 - <<'PY'
+          import json, os
+          d = json.load(open("/tmp/health.json"))
+          assert d["commit"] == os.environ["GITHUB_SHA"], d
+          assert isinstance(d["esquema"], int) and d["esquema"] >= 1, d
+          PY
+          curl -fsS -o /dev/null -w "css %{http_code} %{size_download}B\n" localhost:8000/static/app.css
+          curl -fsS -o /dev/null -w "login %{http_code}\n" localhost:8000/login
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker logs fin

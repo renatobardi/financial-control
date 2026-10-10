@@ -2,7 +2,7 @@
 
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -16,6 +16,8 @@ class Config:
     # Cookie com `Secure`: o app roda atrás de TLS (ADR-0001). Só se desliga em dev local.
     cookie_seguro: bool = True
     max_tentativas: int = 5
+    # Senha do primeiro Admin, só para `criar-admin` e `semear`. Nunca em arquivo nem no repr.
+    admin_senha: str | None = field(default=None, repr=False)
 
 
 def carregar(ambiente: Mapping[str, str] | None = None) -> Config:
@@ -28,4 +30,5 @@ def carregar(ambiente: Mapping[str, str] | None = None) -> Config:
         segredo=segredo.encode() if segredo else None,
         cookie_seguro=ambiente.get("FINANCEIRO_COOKIE_SEGURO", "1") != "0",
         max_tentativas=int(ambiente.get("FINANCEIRO_MAX_TENTATIVAS", "5")),
+        admin_senha=ambiente.get("FINANCEIRO_ADMIN_SENHA") or None,
     )
