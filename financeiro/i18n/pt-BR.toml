@@ -1,0 +1,5 @@
+# Catálogo de textos visíveis. Chave = "<área>.<nome>"; parâmetros entre chaves: {mes}.
+
+[fechamento]
+titulo = "Fechamento mensal"
+mes_fechado = "Mês {mes} fechado."
