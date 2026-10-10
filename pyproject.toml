@@ -1,0 +1,54 @@
+[project]
+name = "financeiro"
+version = "0.1.0"
+description = "Painel de controle financeiro por BD: orçamento, realizado, forecast e fechamento mensal"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+# Dependências de execução: só estas (ADR-0001). Sem ORM.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "httpx>=0.27",
+]
+
+[tool.uv]
+# Não é distribuído: roda da raiz do repo com `python -m financeiro`.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# tests/ espelha financeiro/ sem __init__.py: nomes de arquivo podem se repetir entre pastas.
+addopts = "--import-mode=importlib"
+filterwarnings = ["error"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["prototipo"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "TID251"]
+
+# Regras de dependência entre módulos (AGENTS.md). Quem pode usar cada API está em per-file-ignores.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"sqlite3".msg = "Só financeiro/store/ tem SQL."
+"httpx".msg = "Só módulos de rede próprios falam com a rede."
+"urllib.request".msg = "Só módulos de rede próprios falam com a rede."
+"socket".msg = "Só módulos de rede próprios falam com a rede."
+"os.environ".msg = "Só financeiro/config.py lê o ambiente."
+"os.getenv".msg = "Só financeiro/config.py lê o ambiente."
+
+[tool.ruff.lint.per-file-ignores]
+"financeiro/config.py" = ["TID251"]
+"financeiro/store/**" = ["TID251"]
+# Teste de fumaça do store abre o banco direto para conferir o resultado de fora.
+"tests/store/**" = ["TID251"]
