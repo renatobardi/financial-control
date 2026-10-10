@@ -79,3 +79,15 @@ def ler_percentual(texto: str) -> int:
 def data_hora(iso: str) -> str:
     """`2026-10-08T09:14:05Z` vira `08/10/2026 09:14`."""
     return f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]} {iso[11:16]}"
+
+
+def moeda_mi(centavos: int) -> str:
+    """Centavos em milhões de reais com duas casas, meio centésimo para cima: R$ 2,23 mi."""
+    centavos = _inteiro(centavos)
+    centesimos = (abs(centavos) + 500_000) // 1_000_000  # R$ 0,01 mi = 1.000.000 centavos
+    return f"{_MENOS if centavos < 0 else ''}R$ {centesimos // 100},{centesimos % 100:02d} mi"
+
+
+def valor_abreviado(centavos: int, formato: str) -> str:
+    """Valor na preferência do usuário: `mi` (milhões) ou `mil` (milhares)."""
+    return moeda_mi(centavos) if formato == "mi" else moeda_mil(centavos)

@@ -24,6 +24,7 @@ def ambiente() -> Environment:
         mes=i18n.mes,
         numero=i18n.numero,
         data_hora=i18n.data_hora,
+        valor_abreviado=i18n.valor_abreviado,
     )
     return env
 
