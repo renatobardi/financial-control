@@ -1,0 +1,22 @@
+{# Casca das páginas. `tema`: claro, escuro ou sistema (preferência do usuário). #}
+<!doctype html>
+<html lang="pt-BR" class="{{ 'dark' if tema == 'escuro' else '' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{{ t("inicio.titulo") }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+  {% if tema == "sistema" %}
+  <script>
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      document.documentElement.classList.add("dark");
+    }
+  </script>
+  {% endif %}
+</head>
+<body class="min-h-screen bg-background text-foreground font-sans"
+      {% if csrf %}hx-headers='{{ {"X-CSRF-Token": csrf}|tojson }}'{% endif %}>
+  {% block corpo %}{% endblock %}
+</body>
+</html>

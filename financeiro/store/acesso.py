@@ -55,6 +55,20 @@ def achar_usuario_por_email(conexao: sqlite3.Connection, email: str) -> Usuario 
     return Usuario(*linha) if linha else None
 
 
+def achar_usuario(conexao: sqlite3.Connection, usuario_id: int) -> Usuario | None:
+    linha = conexao.execute(
+        "SELECT id, email, nome, senha_hash, tema, formato_valor, tela_inicial, bd_padrao_id"
+        " FROM usuario WHERE id = ?",
+        (usuario_id,),
+    ).fetchone()
+    return Usuario(*linha) if linha else None
+
+
+def nome_do_bd(conexao: sqlite3.Connection, bd_id: int) -> str | None:
+    linha = conexao.execute("SELECT nome FROM bd WHERE id = ?", (bd_id,)).fetchone()
+    return linha[0] if linha else None
+
+
 def adicionar_membro(conexao: sqlite3.Connection, bd_id: int, usuario_id: int, papel: str) -> None:
     conexao.execute(
         "INSERT INTO membro (bd_id, usuario_id, papel) VALUES (?, ?, ?)",
