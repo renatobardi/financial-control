@@ -1,0 +1,18 @@
+<dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <div class="rounded-2xl bg-card p-4 ring-1 ring-border">
+    <dt class="text-xs text-muted-foreground">{{ t("visao.kpi_budget", rev=revisao.rotulo if revisao else "—") }}</dt>
+    <dd class="text-lg font-semibold">{{ moeda(v.orcamento) if v.orcamento is not none else t("visao.sem_orcamento") }}</dd>
+  </div>
+  <div class="rounded-2xl bg-card p-4 ring-1 ring-border">
+    <dt class="text-xs text-muted-foreground">{{ t("visao.kpi_realizado", pct=percentual(v.executado_pct) if v.executado_pct is not none else "—") }}</dt>
+    <dd class="text-lg font-semibold">{{ moeda(v.realizado) }}</dd>
+  </div>
+  <div class="rounded-2xl bg-card p-4 ring-1 ring-border">
+    <dt class="text-xs text-muted-foreground">{{ t("visao.kpi_forecast", cenario=cenario.nome) }}</dt>
+    <dd class="text-lg font-semibold">{{ moeda(v.forecast) }}</dd>
+  </div>
+  <div class="rounded-2xl bg-card p-4 ring-1 ring-border">
+    <dt class="text-xs text-muted-foreground">{{ t("visao.kpi_saldo_negativo" if v.gap is not none and v.gap < 0 else "visao.kpi_saldo") }}</dt>
+    <dd class="text-lg font-semibold {{ 'text-destructive' if v.gap is not none and v.gap < 0 }}">{{ moeda(v.gap) if v.gap is not none else "—" }}</dd>
+  </div>
+</dl>

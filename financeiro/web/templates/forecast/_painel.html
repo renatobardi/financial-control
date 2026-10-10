@@ -1,0 +1,160 @@
+{% macro entrada_pct(nome, rotulo, valor) %}
+  <label class="flex flex-col gap-1 text-xs font-medium">{{ t(rotulo) }}
+    <input name="{{ nome }}" value="{{ percentual(valor)|replace('%', '') }}" inputmode="decimal"
+           class="h-9 w-28 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal">
+  </label>
+{% endmacro %}
+<div id="forecast" class="flex flex-col gap-4">
+  {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
+  {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+  {% if not pode_editar %}
+  <p class="rounded-xl bg-muted px-3 py-2 text-muted-foreground">{{ t("forecast.somente_leitura") }}</p>
+  {% endif %}
+
+  <nav class="flex flex-wrap items-center gap-2" aria-label="{{ t('forecast.cenario') }}">
+    {% for c in cenarios %}
+    <a href="/forecast?cenario={{ c.id }}&base={{ base }}"
+       hx-get="/forecast/painel?cenario={{ c.id }}&base={{ base }}" hx-target="#forecast" hx-swap="outerHTML"
+       class="rounded-4xl px-3 py-1.5 {{ 'bg-primary text-primary-foreground' if c.id == cenario.id else 'bg-muted text-muted-foreground' }}">{{ c.nome }}</a>
+    {% endfor %}
+    {% if pode_editar %}
+    <form method="post" action="/forecast/cenarios" hx-post="/forecast/cenarios" hx-target="#forecast" hx-swap="outerHTML">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="rounded-4xl bg-secondary px-3 py-1.5 text-secondary-foreground">{{ t("forecast.novo") }}</button>
+    </form>
+    <form method="post" action="/forecast/cenarios/{{ cenario.id }}/duplicar" hx-post="/forecast/cenarios/{{ cenario.id }}/duplicar"
+          hx-target="#forecast" hx-swap="outerHTML">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="rounded-4xl bg-secondary px-3 py-1.5 text-secondary-foreground">{{ t("forecast.duplicar") }}</button>
+    </form>
+    <form method="post" action="/forecast/cenarios/{{ cenario.id }}/remover" hx-post="/forecast/cenarios/{{ cenario.id }}/remover"
+          hx-target="#forecast" hx-swap="outerHTML">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="rounded-4xl bg-secondary px-3 py-1.5 text-secondary-foreground">{{ t("forecast.remover") }}</button>
+    </form>
+    {% endif %}
+  </nav>
+
+  <dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="rounded-2xl bg-card p-4 ring-1 ring-border"><dt class="text-xs text-muted-foreground">{{ t("visao.kpi_budget", rev=revisoes[-1].rotulo if revisoes else "—") }}</dt>
+      <dd class="text-lg font-semibold">{{ moeda(resumo.orcamento) if resumo.orcamento is not none else "—" }}</dd></div>
+    <div class="rounded-2xl bg-card p-4 ring-1 ring-border"><dt class="text-xs text-muted-foreground">{{ t("visao.curva_realizado") }}</dt>
+      <dd class="text-lg font-semibold">{{ moeda(resumo.realizado) }}</dd></div>
+    <div class="rounded-2xl bg-card p-4 ring-1 ring-border"><dt class="text-xs text-muted-foreground">{{ t("visao.kpi_forecast", cenario=cenario.nome) }}</dt>
+      <dd class="text-lg font-semibold">{{ moeda(resumo.forecast) }}</dd></div>
+    <div class="rounded-2xl bg-card p-4 ring-1 ring-border"><dt class="text-xs text-muted-foreground">{{ t("visao.kpi_saldo") }}</dt>
+      <dd class="text-lg font-semibold {{ 'text-destructive' if resumo.gap is not none and resumo.gap < 0 }}">{{ moeda(resumo.gap) if resumo.gap is not none else "—" }}</dd></div>
+  </dl>
+
+  {% if pode_editar %}
+  <form method="post" action="/forecast/cenarios/{{ cenario.id }}" hx-post="/forecast/cenarios/{{ cenario.id }}"
+        hx-target="#forecast" hx-swap="outerHTML"
+        class="flex flex-wrap items-end gap-3 rounded-2xl bg-card p-4 ring-1 ring-border">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("forecast.nome") }}
+      <input name="nome" value="{{ cenario.nome }}" required class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+    {{ entrada_pct("fator_pessoas", "forecast.fator_pessoas", cenario.fator_pessoas) }}
+    {{ entrada_pct("fator_compras", "forecast.fator_compras", cenario.fator_compras) }}
+    <fieldset class="flex flex-col gap-1 text-xs font-medium"><legend>{{ t("forecast.periodo") }}</legend>
+      <span class="flex gap-3 font-normal">
+        {% for q in [1, 2, 3, 4] %}
+        <label class="flex items-center gap-1"><input type="checkbox" name="tri" value="{{ q }}"
+          {{ "checked" if cenario.trimestres // (2 ** (q - 1)) % 2 == 1 }}> {{ t("forecast.trimestre", n=q) }}</label>
+        {% endfor %}
+      </span>
+    </fieldset>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("forecast.escala") }}
+      <select name="escala_tipo" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        {% for tp in ["PDD", "Agrupamento", "Tribo", "Squad"] %}
+        <option value="{{ tp }}" {{ "selected" if cenario.escala_tipo == tp }}>{{ t("forecast.escala_" ~ (tp|lower)) }}</option>
+        {% endfor %}
+      </select></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("forecast.escala_qual") }}
+      <select name="escala_ref" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        <option value="">—</option>
+        {% for id, nome in opcoes_escala %}<option value="{{ id }}" {{ "selected" if cenario.escala_ref == id }}>{{ nome }}</option>{% endfor %}
+      </select></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("forecast.escala_valor") }}
+      <input name="escala_valor" value="{{ moeda(cenario.escala_valor_centavos)|replace('R$ ', '') if cenario.escala_valor_centavos is not none else '' }}"
+             placeholder="{{ moeda(comp.escala_valor)|replace('R$ ', '') }}" inputmode="decimal"
+             class="h-9 w-40 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("forecast.elementos") }}
+      <select name="elemento_tipo" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        {% for tp in ["Agrupamento", "Squad", "Tribo"] %}
+        <option value="{{ tp }}" {{ "selected" if cenario.elemento_tipo == tp }}>{{ t("forecast.elemento_" ~ (tp|lower)) }}</option>
+        {% endfor %}
+      </select></label>
+    <button type="submit" class="h-9 rounded-4xl bg-primary px-4 font-medium text-primary-foreground">{{ t("forecast.salvar") }}</button>
+  </form>
+  {% endif %}
+
+  <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
+    <h2 class="mb-2 font-semibold">{{ t("forecast.incluidos") }} · {{ t("forecast.escala_atual") }}: {{ comp.escala_nome }} · {{ moeda(comp.escala_valor) }}</h2>
+    {{ svg|safe }}
+    <ul class="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+      <li>▮ {{ t("forecast.legenda_realizado") }}</li><li>▯ {{ t("forecast.legenda_forecast") }}</li><li>┅ {{ t("forecast.legenda_disponivel") }}</li>
+    </ul>
+    <p class="mt-2 text-sm">{{ t("forecast.soma") }}: {{ moeda(comp.soma_incluidos) }} · {{ t("forecast.disponivel") }}: {{ moeda(comp.disponivel) }}</p>
+    {% if comp.incluidos %}
+    <ul class="mt-2 flex flex-col gap-1">
+      {% for e in comp.incluidos %}
+      <li class="flex items-center justify-between rounded-xl bg-muted px-3 py-2"><span>{{ e.nome }} · {{ moeda(e.total) }}</span>
+        {% if pode_editar %}
+        <form method="post" action="/forecast/cenarios/{{ cenario.id }}/retirar" hx-post="/forecast/cenarios/{{ cenario.id }}/retirar"
+              hx-target="#forecast" hx-swap="outerHTML">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="chave" value="{{ e.chave }}">
+          <button type="submit" class="underline">{{ t("forecast.tirar") }}</button>
+        </form>
+        {% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mt-2 text-muted-foreground">{{ t("forecast.incluidos_vazio") }}</p>
+    {% endif %}
+  </section>
+
+  <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
+    <h2 class="mb-2 font-semibold">{{ t("forecast.bandeja") }}</h2>
+    {% if bandeja %}
+    <ul class="flex flex-col gap-1">
+      {% for e in bandeja %}
+      <li class="flex items-center justify-between rounded-xl bg-muted px-3 py-2"><span>{{ e.nome }} · {{ moeda(e.total) }}</span>
+        {% if pode_editar %}
+        <form method="post" action="/forecast/cenarios/{{ cenario.id }}/incluir" hx-post="/forecast/cenarios/{{ cenario.id }}/incluir"
+              hx-target="#forecast" hx-swap="outerHTML">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="chave" value="{{ e.chave }}">
+          <button type="submit" class="underline">{{ t("forecast.incluir") }}</button>
+        </form>
+        {% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% elif comp.elementos %}
+    <p class="text-muted-foreground">{{ t("forecast.bandeja_vazia") }}</p>
+    {% else %}
+    <p class="text-muted-foreground">{{ t("forecast.sem_elementos") }}</p>
+    {% endif %}
+  </section>
+
+  <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
+    <h2 class="mb-2 font-semibold">{{ t("forecast.vagas") }}</h2>
+    {% if vagas %}
+    <ul class="flex flex-col gap-1">
+      {% for v in vagas %}
+      <li class="flex items-center justify-between rounded-xl bg-muted px-3 py-2"><span>{{ v.codigo }}</span>
+        {% if pode_editar %}
+        <form method="post" action="/forecast/cenarios/{{ cenario.id }}/vagas/{{ v.id }}"
+              hx-post="/forecast/cenarios/{{ cenario.id }}/vagas/{{ v.id }}" hx-target="#forecast" hx-swap="outerHTML"
+              class="flex items-center gap-2">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input name="mes" value="{{ inicios.get(v.id, '') }}" placeholder="{{ t('forecast.vaga_inicio') }}"
+                 class="h-8 w-32 rounded-4xl border border-input bg-background px-3">
+          <button type="submit" class="underline">{{ t("forecast.vaga_salvar") }}</button>
+        </form>
+        {% else %}<span>{{ inicios.get(v.id, "—") }}</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted-foreground">{{ t("forecast.vagas_vazio") }}</p>
+    {% endif %}
+  </section>
+</div>

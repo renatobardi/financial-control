@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bloco_lazy %}
+{% block titulo %}{{ t("visao.titulo") }}{% endblock %}
+{% block corpo %}
+{% set q = "?cenario=" ~ (cenario_id or "") ~ "&base=" ~ base ~ "&rev=" ~ (rev or "") %}
+<header class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-3">
+  <span class="font-semibold">{{ t("inicio.bd_papel", bd=bd_nome, papel=papel) }}</span>
+  <nav class="flex flex-wrap items-center gap-3">
+    <a href="/orcamento" class="underline">{{ t("orcamento.titulo") }}</a>
+    <a href="/realizado" class="underline">{{ t("realizado.titulo") }}</a>
+    <a href="/forecast" class="underline">{{ t("forecast.titulo") }}</a>
+    <a href="/pessoas" class="underline">{{ t("pessoas.titulo") }}</a>
+    <a href="/compras" class="underline">{{ t("compras.titulo") }}</a>
+    <a href="/cadastros" class="underline">{{ t("cadastros.titulo") }}</a>
+    <a href="/cargas" class="underline">{{ t("cargas.titulo") }}</a>
+    <a href="/fechamento" class="underline">{{ t("fechamento_tela.titulo") }}</a>
+    <a href="/configuracoes" class="underline">{{ t("configuracoes.titulo") }}</a>
+  </nav>
+  <form method="post" action="/sair" class="flex items-center gap-3">
+    <span class="text-muted-foreground">{{ t("inicio.ola", nome=usuario.nome) }}</span>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit" class="underline">{{ t("auth.sair") }}</button>
+  </form>
+</header>
+<main class="mx-auto flex max-w-6xl flex-col gap-4 p-6">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">{{ t("visao.titulo") }}</h1>
+    <p class="text-muted-foreground">{{ t("visao.sub") }}</p>
+  </div>
+  <form method="get" action="/" class="flex flex-wrap items-end gap-3">
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("visao.cenario") }}
+      <select name="cenario" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        {% for c in cenarios %}<option value="{{ c.id }}" {{ "selected" if c.id == cenario_id }}>{{ c.nome }}</option>{% endfor %}
+      </select></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("visao.base") }}
+      <select name="base" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        <option value="bruto" {{ "selected" if base == "bruto" }}>{{ t("realizado.base_bruto") }}</option>
+        <option value="liquido" {{ "selected" if base == "liquido" }}>{{ t("realizado.base_liquido") }}</option>
+      </select></label>
+    <label class="flex flex-col gap-1 text-xs font-medium">{{ t("visao.revisao") }}
+      <select name="rev" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
+        <option value="">{{ t("visao.vigente") }}</option>
+        {% for r in revisoes %}<option value="{{ r.id }}" {{ "selected" if r.id == rev }}>{{ r.rotulo }}</option>{% endfor %}
+      </select></label>
+    <button type="submit" class="h-9 rounded-4xl bg-secondary px-4 font-medium text-secondary-foreground">{{ t("visao.aplicar") }}</button>
+  </form>
+  {{ bloco_lazy("/visao-geral/kpis" ~ q, gatilho="load", altura="h-24") }}
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    {{ bloco_lazy("/visao-geral/curva" ~ q, gatilho="load", altura="h-64") }}
+    {{ bloco_lazy("/visao-geral/alertas" ~ q, gatilho="revealed", altura="h-64") }}
+  </div>
+  {{ bloco_lazy("/visao-geral/risco" ~ q, gatilho="revealed", altura="h-64") }}
+</main>
+{% endblock %}

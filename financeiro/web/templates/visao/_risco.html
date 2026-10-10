@@ -1,0 +1,24 @@
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+  <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
+    <h2 class="font-semibold">{{ t("visao.risco") }}</h2>
+    <p class="mb-2 text-xs text-muted-foreground">{{ t("visao.risco_sub") }}</p>
+    {% if v.risco %}
+    {{ svg|safe }}
+    <ul class="mt-2 flex flex-col gap-1 text-sm">
+      {% for r in v.risco %}
+      <li class="flex justify-between"><span>{{ r.nome }}</span>
+        <span class="{{ 'text-destructive' if r.saldo < 0 }}">{{ moeda(r.saldo) }} · {{ t("visao.saldo_negativo" if r.saldo < 0 else "visao.saldo_positivo") }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted-foreground">{{ t("visao.sem_risco") }}</p>
+    {% endif %}
+  </section>
+  <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
+    <h2 class="mb-2 font-semibold">{{ t("visao.composicao") }}</h2>
+    {{ svg_composicao|safe }}
+    <ul class="mt-2 flex flex-col gap-1 text-sm">
+      {% for rotulo, valor in v.composicao %}<li class="flex justify-between"><span>{{ rotulo }}</span><span>{{ moeda(valor) }}</span></li>{% endfor %}
+    </ul>
+  </section>
+</div>
