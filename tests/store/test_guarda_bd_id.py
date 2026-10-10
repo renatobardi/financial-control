@@ -11,7 +11,9 @@ from pathlib import Path
 from financeiro import store
 
 # Tabelas que não são de dado de um BD: controle do esquema e usuários (ADR-0002).
-SEM_BD_ID = {"versao_esquema", "usuario", "sqlite_sequence"}
+SEM_BD_ID = {"versao_esquema", "bd", "usuario", "sessao", "tentativa_login", "sqlite_sequence"}
+# Funções que cruzam BDs de propósito (@entre_bds). Acrescentar uma exige decisão revisada aqui.
+ENTRE_BDS_PERMITIDAS = {"financeiro.store.acesso.bds_do_usuario"}
 PASTA_MIGRACOES = Path(store.__file__).parent / "migracoes"
 
 
@@ -40,6 +42,8 @@ def violacoes(modulos: list[types.ModuleType], tabelas: set[str]) -> list[str]:
                 continue
             fonte = inspect.getsource(funcao)
             cita = any(re.search(rf"\b{re.escape(t)}\b", fonte) for t in tabelas)
+            if getattr(funcao, "__entre_bds__", False):
+                continue
             if cita and "bd_id" not in inspect.signature(funcao).parameters:
                 achadas.append(f"{modulo.__name__}.{nome}")
     return achadas
@@ -47,6 +51,29 @@ def violacoes(modulos: list[types.ModuleType], tabelas: set[str]) -> list[str]:
 
 def test_funcoes_do_store_que_tocam_tabela_de_dado_recebem_bd_id():
     assert violacoes(modulos_do_store(), tabelas_de_dado()) == []
+
+
+def test_toda_tabela_de_dado_tem_coluna_bd_id():
+    conexao = store.abrir(":memory:")
+    store.migrar(conexao, PASTA_MIGRACOES)
+    sem_coluna = [
+        tabela
+        for tabela in sorted(tabelas_de_dado())
+        if "bd_id" not in {c[1] for c in conexao.execute(f"PRAGMA table_info({tabela})")}
+    ]
+
+    assert sem_coluna == []
+
+
+def test_funcoes_entre_bds_sao_so_as_permitidas():
+    marcadas = {
+        f"{modulo.__name__}.{nome}"
+        for modulo in modulos_do_store()
+        for nome, funcao in inspect.getmembers(modulo, inspect.isfunction)
+        if getattr(funcao, "__entre_bds__", False) and funcao.__module__ == modulo.__name__
+    }
+
+    assert marcadas == ENTRE_BDS_PERMITIDAS
 
 
 def test_guarda_pega_funcao_sem_bd_id(tmp_path):
