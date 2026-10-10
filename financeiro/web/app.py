@@ -1,7 +1,9 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from financeiro import store
 from financeiro.config import Config
@@ -19,6 +21,7 @@ def criar_app(cfg: Config) -> FastAPI:
         yield
 
     app = FastAPI(lifespan=ciclo)
+    app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
     @app.get("/healthz")
     def healthz() -> dict[str, object]:

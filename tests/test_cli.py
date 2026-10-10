@@ -43,3 +43,11 @@ def test_sem_comando_ou_comando_desconhecido_lista_os_comandos(capsys):
     assert cli.main(["xpto"]) == 2
     saida = capsys.readouterr().err
     assert "servir" in saida and "criar-admin" in saida
+
+
+def test_servir_aceita_host():
+    servidor, chamadas = _servidor_falso()
+
+    cli.main(["servir", "--host", "0.0.0.0"], servidor=servidor)
+
+    assert chamadas[0][1] == "0.0.0.0"

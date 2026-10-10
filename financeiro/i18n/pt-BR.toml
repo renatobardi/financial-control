@@ -8,7 +8,7 @@ mes_fechado = "Mês {mes} fechado."
 uso = "uso: python -m financeiro <comando>"
 comando_desconhecido = "comando desconhecido: {comando}"
 nao_implementado = "{comando}: ainda não implementado"
-servir = "sobe o app (--porta N, padrão 8000)"
+servir = "sobe o app (--host H, padrão 127.0.0.1; --porta N, padrão 8000)"
 semear = "carrega dados de exemplo"
 criar_admin = "cria o primeiro usuário Admin"
 
