@@ -86,3 +86,17 @@ def test_ajuste_invalido_e_recusado(conexao, bd):
         calendario.ajustar(conexao, bd, 2026, 13, 160)
     with pytest.raises(ValueError):
         calendario.ajustar(conexao, bd, 2026, 3, -8)
+
+
+def test_capacidade_usa_o_calendario_gravado_ou_calcula_o_padrao(conexao, bd):
+    # sem calendário gerado: 8 h × dias úteis (jan/2026 = 21 dias)
+    assert calendario.capacidade(conexao, bd, 2026, 1) == 168
+    calendario.ajustar(conexao, bd, 2026, 1, 150)
+
+    assert calendario.capacidade(conexao, bd, 2026, 1) == 150
+
+
+def test_capacidade_padrao_considera_feriado_do_bd(conexao, bd):
+    calendario.adicionar_feriado(conexao, bd, dt.date(2026, 1, 20), "São Sebastião")
+
+    assert calendario.capacidade(conexao, bd, 2026, 1) == 160

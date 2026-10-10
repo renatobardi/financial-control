@@ -81,3 +81,12 @@ def ajustar(conexao: Conexao, bd_id: int, ano: int, mes: int, horas: int) -> Non
 
 def horas_do_mes(conexao: Conexao, bd_id: int, ano: int, mes: int) -> int | None:
     return armazem.horas_do_mes(conexao, bd_id, ano, mes)
+
+
+def capacidade(conexao: Conexao, bd_id: int, ano: int, mes: int) -> int:
+    """Horas de capacidade do mês: o calendário gravado ou, sem ele, 8 h × dias úteis."""
+    gravadas = armazem.horas_do_mes(conexao, bd_id, ano, mes)
+    if gravadas is not None:
+        return gravadas
+    extras = {dt.date.fromisoformat(d) for d, _ in armazem.feriados_do_ano(conexao, bd_id, ano)}
+    return dias_uteis(ano, mes, extras) * HORAS_POR_DIA
