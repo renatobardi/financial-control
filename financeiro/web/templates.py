@@ -1,6 +1,7 @@
 from functools import cache
 from pathlib import Path
 
+from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from financeiro import i18n
@@ -20,3 +21,8 @@ def ambiente() -> Environment:
         t=i18n.t, moeda=i18n.moeda, moeda_mil=i18n.moeda_mil, mes=i18n.mes, numero=i18n.numero
     )
     return env
+
+
+def renderizar(nome: str, status: int = 200, **contexto: object) -> HTMLResponse:
+    """Renderiza um template da pasta de templates como resposta HTML."""
+    return HTMLResponse(ambiente().get_template(nome).render(**contexto), status_code=status)

@@ -14,3 +14,27 @@ criar_admin = "cria o primeiro usuário Admin"
 
 [comum]
 carregando = "Carregando…"
+
+[auth]
+titulo_login = "Entrar"
+sub_login = "Acesse o painel de controle financeiro do seu BD."
+email = "E-mail"
+senha = "Senha"
+entrar = "Entrar"
+sair = "Sair"
+erro_credenciais = "E-mail ou senha incorretos."
+erro_limite = "Muitas tentativas. Aguarde alguns minutos e tente de novo."
+erro_csrf = "Sessão inválida. Recarregue a página e tente de novo."
+sem_sessao = "Entre para continuar."
+
+[bds]
+titulo = "Escolha o BD"
+sub = "Você tem acesso a mais de um BD."
+sem_acesso = "Você ainda não tem acesso a nenhum BD."
+sem_acesso_sub = "Peça a um Admin que convide o seu e-mail."
+nao_e_membro = "Você não faz parte deste BD."
+
+[inicio]
+titulo = "Controle financeiro"
+ola = "Olá, {nome}"
+bd_papel = "{bd} · {papel}"

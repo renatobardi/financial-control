@@ -1,5 +1,7 @@
-from collections.abc import AsyncIterator
+import secrets
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -7,10 +9,18 @@ from fastapi.staticfiles import StaticFiles
 
 from financeiro import store
 from financeiro.config import Config
+from financeiro.web import rotas_acesso
 
 
-def criar_app(cfg: Config) -> FastAPI:
-    """Monta a app: abre o banco, migra e serve `/healthz`."""
+def _agora() -> datetime:
+    return datetime.now(UTC)
+
+
+def criar_app(cfg: Config, agora: Callable[[], datetime] = _agora) -> FastAPI:
+    """Monta a app: abre o banco, migra e serve `/healthz` e as rotas de acesso.
+
+    `agora` é o relógio; os testes passam um fixo.
+    """
 
     @asynccontextmanager
     async def ciclo(app: FastAPI) -> AsyncIterator[None]:
@@ -21,7 +31,11 @@ def criar_app(cfg: Config) -> FastAPI:
         yield
 
     app = FastAPI(lifespan=ciclo)
+    app.state.cfg = cfg
+    app.state.agora = agora
+    app.state.segredo = cfg.segredo or secrets.token_bytes(32)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+    app.include_router(rotas_acesso.roteador)
 
     @app.get("/healthz")
     def healthz() -> dict[str, object]:

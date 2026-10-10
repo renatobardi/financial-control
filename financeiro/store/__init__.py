@@ -1,11 +1,23 @@
 """Acesso ao SQLite. Todo o SQL do app mora aqui (AGENTS.md)."""
 
+import sqlite3
 from pathlib import Path
 
 from financeiro.store.backup import backup
 from financeiro.store.conexao import abrir
 from financeiro.store.migracoes import MigracaoInvalida, migrar, versao_atual
 
+# Tipo da conexão, para quem está fora de store/ anotar sem importar sqlite3.
+Conexao = sqlite3.Connection
+
 PASTA_MIGRACOES = Path(__file__).parent / "migracoes"
 
-__all__ = ["PASTA_MIGRACOES", "MigracaoInvalida", "abrir", "backup", "migrar", "versao_atual"]
+__all__ = [
+    "PASTA_MIGRACOES",
+    "Conexao",
+    "MigracaoInvalida",
+    "abrir",
+    "backup",
+    "migrar",
+    "versao_atual",
+]
