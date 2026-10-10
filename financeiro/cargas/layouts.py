@@ -24,6 +24,7 @@ class Contexto:
     conexao: Conexao
     bd_id: int
     diario: armazem.Diario
+    agora: str = ""  # ISO UTC do momento da carga
 
 
 @dataclass
@@ -229,7 +230,7 @@ def _revisao_rascunho(ctx: Contexto) -> int:
         ctx.diario,
         "pdd_revisao",
         ctx.bd_id,
-        {"rotulo": rotulo, "estado": "rascunho", "criada_em": "carga"},
+        {"rotulo": rotulo, "estado": "rascunho", "criada_em": ctx.agora},
     )
 
 

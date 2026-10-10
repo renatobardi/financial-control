@@ -67,7 +67,7 @@ def processar(
 
     conexao.commit()  # começa de uma transação limpa
     diario = armazem.Diario()
-    ctx = layouts.Contexto(conexao, bd_id, diario)
+    ctx = layouts.Contexto(conexao, bd_id, diario, _iso(agora))
     try:
         resultados = layout.processar(ctx, linhas)
         contagens = {

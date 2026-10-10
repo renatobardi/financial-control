@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import NamedTuple
 
-from financeiro import custo, i18n, vigencia
+from financeiro import consumo, i18n, vigencia
 from financeiro.store import Conexao
-from financeiro.store import cadastros as cadastros_store
+from financeiro.store import consumo as armazem_consumo
 from financeiro.store import fechamento as armazem
 from financeiro.store.fechamento import EntradaLog
 
@@ -70,31 +70,24 @@ def mes_inicial(conexao: Conexao, bd_id: int, agora: datetime | None = None) -> 
     return f"{ano:04d}-01"
 
 
-def _calcular(conexao: Conexao, bd_id: int, mes: str) -> Totais:
-    """Valor do mês pelas tarifas e pelo markup vigentes agora (o que o forecast usa)."""
-    pessoas = 0
-    horas_total = 0
-    sem_tarifa = 0
-    for cargo_id, horas in armazem.horas_por_cargo(conexao, bd_id, mes):
-        horas_total += horas
-        try:
-            pessoas += horas * custo.custo_hora(conexao, bd_id, cargo_id, mes).bruta_centavos
-        except custo.SemTarifa:
-            sem_tarifa += horas
-    liquido, _ordens = armazem.compras_liquidas(conexao, bd_id, mes)
-    markup = cadastros_store.markup_vigente(conexao, bd_id, mes)
-    compras = custo.bruta(liquido, markup.centesimos_pct if markup else 0)
-    return Totais("forecast", horas_total, pessoas, compras, sem_tarifa)
+def _totais(linhas, estado: str, sem_tarifa: int = 0) -> Totais:
+    pessoas = [x for x in linhas if x.origem == "pessoas"]
+    compras = [x for x in linhas if x.origem == "compras"]
+    return Totais(
+        estado,
+        sum(x.horas for x in pessoas),
+        sum(x.bruto_centavos for x in pessoas),
+        sum(x.bruto_centavos for x in compras),
+        sem_tarifa,
+    )
 
 
 def totais_do_mes(conexao: Conexao, bd_id: int, mes: str) -> Totais:
     """Mês fechado: o que foi congelado, como realizado. Mês aberto: o cálculo, como forecast."""
-    congelado = armazem.congelado_do_mes(conexao, bd_id, mes)
-    if congelado is not None:
-        return Totais(
-            "realizado", congelado.horas, congelado.pessoas_centavos, congelado.compras_centavos, 0
-        )
-    return _calcular(conexao, bd_id, mes)
+    estado, linhas = consumo.do_mes(conexao, bd_id, mes)
+    if estado == "realizado":
+        return _totais(linhas, "realizado")
+    return _totais(linhas, "forecast", consumo.calcular(conexao, bd_id, mes).sem_tarifa_horas)
 
 
 def fechar(
@@ -117,13 +110,15 @@ def fechar(
         )
     if mes != inicial and anterior not in fechados:
         raise MesAnteriorAberto(f"Feche antes {_rotulo(anterior)}: os meses fecham em ordem.")
-    calculado = _calcular(conexao, bd_id, mes)
+    calculo = consumo.calcular(conexao, bd_id, mes)
+    calculado = _totais(calculo.linhas, "realizado")
     conexao.commit()
     try:
         congelado = armazem.Congelado(
             calculado.horas, calculado.pessoas_centavos, calculado.compras_centavos
         )
         armazem.fechar_mes(conexao, bd_id, mes, _iso(agora), congelado)
+        armazem_consumo.gravar_realizado(conexao, bd_id, mes, calculo.linhas)
         armazem.registrar_log(
             conexao, bd_id, mes, "fechou", usuario_id, _iso(agora), motivo.strip()
         )
@@ -131,7 +126,7 @@ def fechar(
     except Exception:
         conexao.rollback()
         raise
-    return Totais("realizado", *calculado[1:])
+    return calculado
 
 
 def reabrir(
@@ -149,6 +144,7 @@ def reabrir(
         raise ReaberturaInvalida("Informe o motivo da reabertura.")
     conexao.commit()
     try:
+        armazem_consumo.apagar_realizado(conexao, bd_id, mes)
         armazem.reabrir_mes(conexao, bd_id, mes)
         armazem.registrar_log(
             conexao, bd_id, mes, "reabriu", usuario_id, _iso(agora), motivo.strip()
