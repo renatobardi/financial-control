@@ -120,3 +120,50 @@ def cancelar_vaga(conexao: sqlite3.Connection, bd_id: int, vaga_id: int) -> None
     if cursor.rowcount == 0:
         raise VagaNaoAberta(vaga_id)
     conexao.commit()
+
+
+class PessoaDetalhe(NamedTuple):
+    id: int
+    matricula: str
+    nome: str
+    org_id: int
+    unidade: str
+    cargo_id: int
+    cargo: str
+    empresa: str
+    vinculo: str  # propria | consultoria
+    tema_id: int
+    tema: str
+    admissao: str
+    desligamento: str | None
+
+
+def listar_detalhe(conexao: sqlite3.Connection, bd_id: int) -> list[PessoaDetalhe]:
+    linhas = conexao.execute(
+        "SELECT p.id, p.matricula, p.nome, p.org_id, o.nome, p.cargo_id, c.nome, e.nome, e.tipo,"
+        " p.tema_id, t.codigo, p.admissao, p.desligamento FROM pessoa p"
+        " JOIN org o ON o.bd_id = p.bd_id AND o.id = p.org_id"
+        " JOIN cargo c ON c.bd_id = p.bd_id AND c.id = p.cargo_id"
+        " JOIN empresa e ON e.bd_id = c.bd_id AND e.id = c.empresa_id"
+        " JOIN tema t ON t.bd_id = p.bd_id AND t.id = p.tema_id"
+        " WHERE p.bd_id = ? ORDER BY p.nome",
+        (bd_id,),
+    ).fetchall()
+    return [PessoaDetalhe(*linha) for linha in linhas]
+
+
+def atualizar_pessoa(
+    conexao: sqlite3.Connection,
+    bd_id: int,
+    pessoa_id: int,
+    org_id: int,
+    cargo_id: int,
+    tema_id: int,
+    desligamento: str | None,
+) -> None:
+    conexao.execute(
+        "UPDATE pessoa SET org_id = ?, cargo_id = ?, tema_id = ?, desligamento = ?"
+        " WHERE bd_id = ? AND id = ?",
+        (org_id, cargo_id, tema_id, desligamento, bd_id, pessoa_id),
+    )
+    conexao.commit()
