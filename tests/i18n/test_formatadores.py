@@ -89,3 +89,7 @@ def test_ler_percentual_devolve_centesimos(texto, centesimos):
 def test_ler_percentual_recusa_texto_invalido():
     with pytest.raises(ValueError):
         i18n.ler_percentual("dez")
+
+
+def test_data_hora_iso_para_o_formato_brasileiro():
+    assert i18n.data_hora("2026-10-08T09:14:05Z") == "08/10/2026 09:14"

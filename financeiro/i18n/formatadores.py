@@ -74,3 +74,8 @@ def ler_percentual(texto: str) -> int:
     """`10,9` ou `10,90%` em centésimos de ponto percentual (1090)."""
     pontos, centesimos = _ler_decimal_pt(texto, ("%",))
     return pontos * 100 + centesimos
+
+
+def data_hora(iso: str) -> str:
+    """`2026-10-08T09:14:05Z` vira `08/10/2026 09:14`."""
+    return f"{iso[8:10]}/{iso[5:7]}/{iso[0:4]} {iso[11:16]}"

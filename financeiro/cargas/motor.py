@@ -1,6 +1,6 @@
 """Motor de cargas: lê o arquivo, valida e grava em uma transação, relata e desfaz."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from financeiro import i18n
@@ -18,6 +18,16 @@ class CargaInvalida(Exception):
 
 
 @dataclass
+class Rejeicao:
+    linha: int
+    regra: str
+    mensagem: str
+    dados: dict[str, str]
+    aprovavel: bool
+    grupo: str | None
+
+
+@dataclass
 class Relatorio:
     carga_id: int | None
     layout: str
@@ -28,6 +38,7 @@ class Relatorio:
     rejeitadas: int
     horas: int
     valor_centavos: int
+    rejeicoes: list[Rejeicao] = field(default_factory=list)
 
 
 def _iso(momento: datetime) -> str:
@@ -87,7 +98,12 @@ def processar(
     except Exception:
         conexao.rollback()
         raise
-    return Relatorio(carga_id, layout.nome, **contagens)
+    rejeicoes = [
+        Rejeicao(r.linha, r.regra, r.mensagem, r.dados, r.aprovavel, r.grupo)
+        for r in resultados
+        if r.acao == "rejeitada"
+    ]
+    return Relatorio(carga_id, layout.nome, **contagens, rejeicoes=rejeicoes)
 
 
 def aprovar_extras(conexao: Conexao, bd_id: int, carga_id: int, grupo: str, agora: datetime) -> int:

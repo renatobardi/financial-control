@@ -2,6 +2,7 @@
 
 from financeiro.i18n.catalogo import ChaveAusente, t
 from financeiro.i18n.formatadores import (
+    data_hora,
     ler_moeda,
     ler_percentual,
     mes,
@@ -13,6 +14,7 @@ from financeiro.i18n.formatadores import (
 
 __all__ = [
     "ChaveAusente",
+    "data_hora",
     "ler_moeda",
     "ler_percentual",
     "mes",

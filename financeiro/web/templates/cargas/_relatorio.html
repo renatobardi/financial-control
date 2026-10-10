@@ -1,0 +1,72 @@
+{# Relatório sintético (contagens) e analítico (rejeições linha a linha) de uma carga. #}
+<section class="flex flex-col gap-3 rounded-2xl bg-card p-4 ring-1 ring-border">
+  {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
+  {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+  {% if r %}
+  <header class="flex flex-wrap items-center justify-between gap-2">
+    <h2 class="font-semibold">
+      {% if r.carga_id %}{{ t("cargas.carga_numero", id=r.carga_id) }} · {% endif %}{{ r.layout }}
+      {% if r.arquivo %}<span class="font-normal text-muted-foreground">· {{ r.arquivo }}</span>{% endif %}
+    </h2>
+    {% if r.pre %}<span class="text-muted-foreground">{{ t("cargas.pre_validacao") }}</span>{% endif %}
+  </header>
+  <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+    {% for rotulo, valor in [
+      ("cargas.lidas", r.lidas), ("cargas.inseridas", r.inseridas), ("cargas.atualizadas", r.atualizadas),
+      ("cargas.iguais", r.iguais), ("cargas.rejeitadas", r.rejeitadas), ("cargas.horas", numero(r.horas)),
+      ("cargas.valor", moeda(r.valor)),
+    ] %}
+    <div class="rounded-xl bg-muted p-3"><dt class="text-xs text-muted-foreground">{{ t(rotulo) }}</dt><dd class="text-lg font-semibold">{{ valor }}</dd></div>
+    {% endfor %}
+  </dl>
+
+  <h3 class="font-semibold">{{ t("cargas.analitico") }}</h3>
+  {% if r.rejeicoes %}
+  <div class="overflow-x-auto rounded-2xl ring-1 ring-border">
+    <table class="w-full text-left">
+      <thead class="bg-muted text-muted-foreground"><tr>
+        <th class="px-3 py-2 font-medium">{{ t("cargas.col_linha") }}</th>
+        <th class="px-3 py-2 font-medium">{{ t("cargas.col_regra") }}</th>
+        <th class="px-3 py-2 font-medium">{{ t("cargas.col_mensagem") }}</th>
+        <th class="px-3 py-2 font-medium">{{ t("cargas.col_acao") }}</th>
+      </tr></thead>
+      <tbody>
+        {% for j in r.rejeicoes %}
+        <tr class="border-t border-border">
+          <td class="px-3 py-2">{{ j.linha }}</td>
+          <td class="px-3 py-2 font-mono text-xs">{{ j.regra }}</td>
+          <td class="px-3 py-2">{{ j.mensagem }}</td>
+          <td class="px-3 py-2">
+            {% if j.aprovada %}{{ t("cargas.aprovada") }}
+            {% elif j.aprovavel and eh_admin and r.carga_id and r.estado == "ativa" and loop.first or (j.aprovavel and eh_admin and r.carga_id and r.estado == "ativa" and r.rejeicoes[loop.index0 - 1].grupo != j.grupo) %}
+            <form method="post" action="/cargas/{{ r.carga_id }}/aprovar"
+                  hx-post="/cargas/{{ r.carga_id }}/aprovar" hx-target="#resultado" hx-swap="innerHTML">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <input type="hidden" name="grupo" value="{{ j.grupo }}">
+              <button type="submit" class="rounded-4xl bg-primary px-3 py-1 text-primary-foreground">{{ t("cargas.aprovar_extras") }}</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted-foreground">{{ t("cargas.sem_rejeicoes") }}</p>
+  {% endif %}
+
+  {% if r.carga_id %}
+  <footer class="flex flex-wrap items-center gap-3">
+    {% if r.rejeicoes %}<a class="underline" href="/cargas/{{ r.carga_id }}/rejeicoes.csv">{{ t("cargas.baixar_rejeicoes") }}</a>{% endif %}
+    {% if pode_editar and r.estado == "ativa" %}
+    <form method="post" action="/cargas/{{ r.carga_id }}/desfazer"
+          hx-post="/cargas/{{ r.carga_id }}/desfazer" hx-target="#resultado" hx-swap="innerHTML">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="rounded-4xl bg-secondary px-3 py-1 text-secondary-foreground">{{ t("cargas.desfazer") }}</button>
+    </form>
+    {% endif %}
+  </footer>
+  {% endif %}
+  {% endif %}
+</section>
