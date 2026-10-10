@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bloco_lazy %}
+{% block titulo %}{{ t("orcamento.titulo") }}{% endblock %}
+{% block corpo %}
+<header class="flex items-center justify-between border-b border-border px-6 py-3">
+  <a href="/" class="font-semibold">{{ t("configuracoes.voltar") }}</a>
+  <span class="text-muted-foreground">{{ t("inicio.bd_papel", bd=bd_nome, papel=papel) }}</span>
+</header>
+<main class="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+  <div>
+    <h1 class="text-xl font-semibold tracking-tight">{{ t("orcamento.titulo") }}</h1>
+    <p class="text-muted-foreground">{{ t("orcamento.sub") }}</p>
+  </div>
+  {{ bloco_lazy("/orcamento/tabela?base=" ~ base ~ ("&rev=" ~ rev if rev else "") ~ ("&comparar=" ~ comparar if comparar else ""), gatilho="load", altura="h-64") }}
+</main>
+{% endblock %}

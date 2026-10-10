@@ -25,6 +25,7 @@ def ambiente() -> Environment:
         numero=i18n.numero,
         data_hora=i18n.data_hora,
         valor_abreviado=i18n.valor_abreviado,
+        percentual=i18n.percentual,
     )
     return env
 
