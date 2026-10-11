@@ -108,6 +108,7 @@ def pagina(
         tema=contexto.usuario.tema,
         csrf=contexto.csrf,
         bd_nome=contexto.bd_nome,
+        usuario=contexto.usuario,
         papel=contexto.papel,
         rev=rev,
         base=base,
