@@ -79,6 +79,7 @@ class Aba:
     formularios: list[Formulario]
     acoes_linha: list[AcaoLinha] = field(default_factory=list)
     paginada: bool = True
+    nota: str | None = None
 
 
 # ---------- leitura dos campos do formulário ----------
@@ -238,11 +239,67 @@ def _cargo(conexao, bd_id, dados, mes_atual):
     nivel = _texto(dados, "nivel")
     if nivel not in NIVEIS:
         raise ErroCadastro("cadastros.erro_campo_obrigatorio")
+    valor = dados.get("valor", "").strip()
+    if valor:  # tarifa inicial: lê antes de criar, para não deixar cargo sem tarifa por erro
+        try:
+            centavos = i18n.ler_moeda(valor)
+        except ValueError as erro:
+            raise ErroCadastro("cadastros.erro_valor") from erro
+        inicio = _mes(dados, "a_partir_de")
+    cargo_id = []
     _guardar(
-        lambda: cadastros.criar_cargo(
-            conexao, bd_id, _inteiro(dados, "empresa_id"), _texto(dados, "nome"), nivel
+        lambda: cargo_id.append(
+            cadastros.criar_cargo(
+                conexao, bd_id, _inteiro(dados, "empresa_id"), _texto(dados, "nome"), nivel
+            )
         )
     )
+    if valor:
+        _guardar(lambda: cadastros.definir_tarifa(conexao, bd_id, cargo_id[0], centavos, inicio))
+    return "cadastros.ok_salvo"
+
+
+def _definir(tabela: str, coluna: str, campo: str, validos: tuple[str, ...] | None = None):
+    def agir(conexao, bd_id, dados, mes_atual):
+        registro = _inteiro(dados, "id")
+        if validos is not None:
+            valor = _texto(dados, campo)
+            if valor not in validos:
+                raise ErroCadastro("cadastros.erro_campo_obrigatorio")
+        else:
+            valor = _inteiro(dados, campo)
+        _guardar(lambda: edicao.definir(conexao, tabela, coluna, bd_id, registro, valor))
+        return "cadastros.ok_salvo"
+
+    return agir
+
+
+def _editar_demanda(conexao, bd_id, dados, mes_atual):
+    registro = _inteiro(dados, "id")
+    tipo = dados.get("tipo", "").strip()
+    iniciativa = dados.get("iniciativa_id", "").strip()
+    if tipo:
+        if tipo not in TIPOS_DEMANDA:
+            raise ErroCadastro("cadastros.erro_campo_obrigatorio")
+        _guardar(lambda: edicao.definir(conexao, "demanda", "tipo", bd_id, registro, tipo))
+    if iniciativa:
+        if not iniciativa.isdigit():
+            raise ErroCadastro("cadastros.erro_campo_obrigatorio")
+        _guardar(
+            lambda: edicao.definir(
+                conexao, "demanda", "iniciativa_id", bd_id, registro, int(iniciativa)
+            )
+        )
+    return "cadastros.ok_salvo"
+
+
+def _editar_markup(conexao, bd_id, dados, mes_atual):
+    try:
+        pct = i18n.ler_percentual(_texto(dados, "percentual"))
+    except ValueError as erro:
+        raise ErroCadastro("cadastros.erro_valor") from erro
+    if not cadastros.alterar_markup_vigente(conexao, bd_id, pct):
+        raise ErroCadastro("cadastros.erro_sem_markup", 409)
     return "cadastros.ok_salvo"
 
 
@@ -355,14 +412,18 @@ ACOES: dict[tuple[str, str], Callable[..., str]] = {
     ("iniciativas", "renomear"): _renomear("iniciativa"),
     ("demandas", "nova"): _demanda,
     ("demandas", "renomear"): _renomear("demanda"),
+    ("demandas", "editar"): _editar_demanda,
     ("temas", "nova"): _tema,
     ("temas", "renomear"): _renomear("tema"),
+    ("temas", "editar"): _definir("tema", "agrupamento_id", "agrupamento_id"),
     ("agrupamentos", "nova"): _agrupamento,
     ("agrupamentos", "renomear"): _renomear("agrupamento"),
     ("empresas", "nova"): _empresa,
     ("empresas", "renomear"): _renomear("empresa"),
+    ("empresas", "editar"): _definir("empresa", "tipo", "tipo", TIPOS_EMPRESA),
     ("cargos", "nova"): _cargo,
     ("cargos", "renomear"): _renomear("cargo"),
+    ("cargos", "editar"): _definir("cargo", "nivel", "nivel", NIVEIS),
     ("cargos", "tarifa"): _tarifa,
     ("fornecedores", "nova"): _fornecedor,
     ("fornecedores", "renomear"): _renomear("fornecedor"),
@@ -370,6 +431,7 @@ ACOES: dict[tuple[str, str], Callable[..., str]] = {
     ("vagas", "preencher"): _preencher_vaga,
     ("vagas", "cancelar"): _cancelar_vaga,
     ("markup", "novo"): _markup,
+    ("markup", "editar"): _editar_markup,
     ("calendario", "gerar"): _gerar_calendario,
     ("calendario", "ajustar"): _ajustar_calendario,
     ("calendario", "feriado"): _feriado,
@@ -390,7 +452,7 @@ def _pesquisa(linhas, termo: str):
     return [linha for linha in linhas if termo in " ".join(linha[1]).lower()]
 
 
-def montar(conexao: Conexao, bd_id: int, aba: str, ano: int, mes_atual: str) -> Aba:
+def _montar_base(conexao: Conexao, bd_id: int, aba: str, ano: int, mes_atual: str) -> Aba:
     """Constrói o conteúdo da aba. Texto fixo vem do catálogo na hora de renderizar."""
     s = i18n.t
     if aba == "organizacao":
@@ -794,6 +856,83 @@ def montar(conexao: Conexao, bd_id: int, aba: str, ano: int, mes_atual: str) -> 
             paginada=False,
         )
     raise KeyError(aba)
+
+
+def montar(conexao: Conexao, bd_id: int, aba: str, ano: int, mes_atual: str) -> Aba:
+    """A aba com os formulários de edição de campo (tipo, nível, iniciativa, markup…)."""
+    conteudo = _montar_base(conexao, bd_id, aba, ano, mes_atual)
+    s = i18n.t
+    if aba == "empresas":
+        ops = _opcoes(cadastros.listar_empresas(conexao, bd_id), lambda x: x.id, lambda x: x.nome)
+        conteudo.formularios.append(
+            Formulario(
+                "editar", "cadastros.f_editar_empresa",
+                [Campo("id", "cadastros.c_empresa", "selecao", ops),
+                 Campo("tipo", "cadastros.c_tipo", "selecao",
+                       [(t, s(f"cadastros.tipo_{t}")) for t in TIPOS_EMPRESA])],
+            )
+        )  # fmt: skip
+    elif aba == "cargos":
+        ops = _opcoes(
+            cadastros.listar_cargos(conexao, bd_id),
+            lambda x: x.id,
+            lambda x: f"{x.empresa} · {x.nome}",
+        )
+        nova = next(f for f in conteudo.formularios if f.acao == "nova")
+        nova.campos += [
+            Campo("valor", "cadastros.c_tarifa_inicial", "valor", opcional=True),
+            Campo("a_partir_de", "cadastros.c_a_partir_de", "mes", opcional=True),
+        ]
+        conteudo.formularios.append(
+            Formulario(
+                "editar", "cadastros.f_editar_cargo",
+                [Campo("id", "cadastros.c_cargo", "selecao", ops),
+                 Campo("nivel", "cadastros.c_nivel", "selecao", [(n, n) for n in NIVEIS])],
+            )
+        )  # fmt: skip
+    elif aba == "demandas":
+        ops = _opcoes(
+            portfolio.listar_demandas(conexao, bd_id),
+            lambda x: x.id,
+            lambda x: f"{x.codigo} · {x.nome}",
+        )
+        ini = _opcoes(
+            portfolio.listar_iniciativas(conexao, bd_id), lambda x: x.id, lambda x: x.nome
+        )
+        conteudo.formularios.append(
+            Formulario(
+                "editar", "cadastros.f_editar_demanda",
+                [Campo("id", "cadastros.c_demanda", "selecao", ops),
+                 Campo("tipo", "cadastros.c_tipo", "selecao",
+                       [(t, t) for t in TIPOS_DEMANDA], opcional=True),
+                 Campo("iniciativa_id", "cadastros.c_iniciativa", "selecao", ini, opcional=True)],
+            )
+        )  # fmt: skip
+    elif aba == "temas":
+        ops = _opcoes(
+            portfolio.listar_temas(conexao, bd_id),
+            lambda x: x.id,
+            lambda x: f"{x.codigo} · {x.nome}",
+        )
+        agr = _opcoes(
+            portfolio.listar_agrupamentos(conexao, bd_id), lambda x: x.id, lambda x: x.nome
+        )
+        conteudo.formularios.append(
+            Formulario(
+                "editar", "cadastros.f_editar_tema",
+                [Campo("id", "cadastros.c_tema", "selecao", ops),
+                 Campo("agrupamento_id", "cadastros.c_agrupamento", "selecao", agr)],
+            )
+        )  # fmt: skip
+    elif aba == "markup":
+        conteudo.nota = s("cadastros.markup_nota")
+        conteudo.formularios.append(
+            Formulario(
+                "editar", "cadastros.f_editar_markup",
+                [Campo("percentual", "cadastros.c_percentual", "valor")],
+            )
+        )  # fmt: skip
+    return conteudo
 
 
 def paginar(linhas, pagina: int, termo: str):

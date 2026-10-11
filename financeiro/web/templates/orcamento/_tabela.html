@@ -17,7 +17,7 @@
       {{ r.rotulo }}{% if vigente and r.id == vigente.id %} · {{ t("orcamento.vigente") }}{% endif %}
     </a>
     {% endfor %}
-    {% if pode_editar %}
+    {% if pode_editar and pode_nova %}
     <form method="post" action="/orcamento/revisoes" hx-post="/orcamento/revisoes" hx-target="#pdd" hx-swap="outerHTML">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       {{ enviar("orcamento.nova_revisao", "secundario") }}
@@ -68,7 +68,7 @@
     </label>
     <label class="flex flex-col gap-1 text-xs font-medium">{{ t("orcamento.comparar") }}
       <select name="comparar" class="h-9 rounded-4xl border border-input bg-background px-3 text-sm font-normal">
-        <option value="">{{ t("orcamento.sem_comparacao") }}</option>
+        <option value="0" {{ "selected" if not comparar }}>{{ t("orcamento.sem_comparacao") }}</option>
         {% for r in revisoes if r.id != selecionada.id %}
         <option value="{{ r.id }}" {{ "selected" if comparar and comparar.id == r.id }}>{{ r.rotulo }}</option>
         {% endfor %}
@@ -95,10 +95,23 @@
         <tr class="border-t border-border">
           <td class="px-3 py-2">{{ l.iniciativa }}</td>
           <td class="px-3 py-2">{{ selo(l.tipo, l.tipo|lower) }}</td>
-          <td class="px-3 py-2 text-right">{{ valor(l.bruto) }}</td>
+          <td class="px-3 py-2 text-right">
+            {% if pode_editar and selecionada.estado == "rascunho" %}
+            <form method="post" action="/orcamento/{{ selecionada.id }}/linhas"
+                  hx-post="/orcamento/{{ selecionada.id }}/linhas" hx-target="#pdd" hx-swap="outerHTML"
+                  class="inline-flex items-center justify-end gap-1">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <input type="hidden" name="iniciativa_id" value="{{ l.iniciativa_id }}">
+              <input type="hidden" name="tipo" value="{{ l.tipo }}">
+              <input name="valor" value="{{ moeda(l.bruto)|replace('R$ ', '') }}" aria-label="{{ t('orcamento.col_bruto') }}"
+                     class="h-8 w-32 rounded-4xl border border-input bg-background px-3 text-right text-sm tabular-nums">
+              <button type="submit" class="rounded-4xl bg-secondary px-2.5 py-1 text-xs text-secondary-foreground">{{ t("orcamento.salvar_linha") }}</button>
+            </form>
+            {% else %}{{ valor(l.bruto) }}{% endif %}
+          </td>
           <td class="px-3 py-2 text-right">{{ valor(l.liquido) }}</td>
           <td class="px-3 py-2 text-right">{{ l.percentual }}</td>
-          {% if comparar %}<td class="px-3 py-2 text-right">{{ valor(l.delta) }}</td>{% endif %}
+          {% if comparar %}<td class="px-3 py-2 text-right {{ 'text-destructive' if l.delta is not none and l.delta < 0 }}">{% if l.delta is none %}—{% else %}{{ "+" if l.delta > 0 }}{{ valor(l.delta) }}{% endif %}</td>{% endif %}
           <td class="px-3 py-2 text-right">{{ valor(l.total_ano) }}</td>
           <td class="px-3 py-2 text-right {{ 'text-destructive' if l.gap < 0 }}">{{ valor(l.gap) }}</td>
           {% if pode_editar and selecionada.estado == "rascunho" %}
@@ -116,10 +129,23 @@
         {% else %}
         <tr><td class="px-3 py-4 text-muted-foreground" colspan="9">{{ t("orcamento.sem_linhas") }}</td></tr>
         {% endfor %}
+        {% for r in removidas %}
+        <tr class="border-t border-border text-muted-foreground">
+          <td class="px-3 py-2">{{ r.iniciativa }}</td>
+          <td class="px-3 py-2">{{ selo(r.tipo, r.tipo|lower) }}</td>
+          <td class="px-3 py-2 text-right" colspan="3">{{ t("orcamento.removida") }}</td>
+          {% if comparar %}<td class="px-3 py-2 text-right text-destructive">{{ valor(r.delta) }}</td>{% endif %}
+          <td colspan="3"></td>
+        </tr>
+        {% endfor %}
       </tbody>
       <tfoot><tr class="border-t border-border font-semibold">
         <td class="px-3 py-2" colspan="2">{{ t("orcamento.total") }}</td>
-        <td class="px-3 py-2 text-right" colspan="{{ 6 if comparar else 5 }}">{{ valor(total) }}</td>
+        <td class="px-3 py-2 text-right">{{ valor(tot_bruto) }}</td>
+        <td class="px-3 py-2 text-right">{{ valor(tot_liquido) }}</td>
+        <td class="px-3 py-2 text-right text-xs text-muted-foreground">{{ t("orcamento.divisao", capex=pct_capex, opex=pct_opex) }}</td>
+        {% if comparar %}<td class="px-3 py-2 text-right">{% if delta_total is not none %}{{ "+" if delta_total > 0 }}{{ valor(delta_total) }}{% endif %}</td>{% endif %}
+        <td colspan="3"></td>
       </tr></tfoot>
     </table>
   </div>
