@@ -11,7 +11,16 @@ from pathlib import Path
 from financeiro import store
 
 # Tabelas que não são de dado de um BD: controle do esquema e usuários (ADR-0002).
-SEM_BD_ID = {"versao_esquema", "bd", "usuario", "sessao", "tentativa_login", "sqlite_sequence"}
+SEM_BD_ID = {
+    "versao_esquema",
+    "bd",
+    "usuario",
+    "sessao",
+    "tentativa_login",
+    "segundo_fator",
+    "codigo_recuperacao",
+    "sqlite_sequence",
+}
 # Funções que cruzam BDs de propósito (@entre_bds). Acrescentar uma exige decisão revisada aqui.
 ENTRE_BDS_PERMITIDAS = {
     "financeiro.store.acesso.bds_do_usuario",

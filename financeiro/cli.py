@@ -3,14 +3,16 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
-from financeiro import administracao, config, store
+from financeiro import administracao, config, doisfatores, store
 from financeiro.i18n import t
+from financeiro.store import acesso
 from financeiro.web.app import criar_app
 
 _COMANDOS = {
     "semear": "cli.semear",
     "criar-admin": "cli.criar_admin",
     "backup": "cli.backup",
+    "desativar-2fa": "cli.desativar_2fa",
 }
 
 
@@ -58,6 +60,22 @@ def _criar_admin(resto: Sequence[str], cfg: config.Config) -> int:
     finally:
         conexao.close()
     print(t(f"cli.admin_{situacao}", email=email, bd=bd))
+    return 0
+
+
+def _desativar_2fa(resto: Sequence[str], cfg: config.Config) -> int:
+    """Para quem perdeu o celular e os códigos de recuperação: só quem tem acesso ao host."""
+    email = _opcao(resto, "--email", "")
+    conexao = _abrir_banco(cfg)
+    try:
+        usuario = acesso.achar_usuario_por_email(conexao, email)
+        if usuario is None:
+            print(t("cli.usuario_inexistente", email=email), file=sys.stderr)
+            return 1
+        doisfatores.desativar(conexao, usuario.id)
+    finally:
+        conexao.close()
+    print(t("cli.dois_fatores_desativado", email=email))
     return 0
 
 
@@ -110,6 +128,8 @@ def main(
         return 0
     if comando == "criar-admin":
         return _criar_admin(resto, cfg)
+    if comando == "desativar-2fa":
+        return _desativar_2fa(resto, cfg)
     if comando == "semear":
         return _semear(cfg)
     if comando == "backup":

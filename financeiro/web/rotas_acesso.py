@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
@@ -31,6 +33,30 @@ TELAS_INICIAIS = {
 }
 
 
+DURACAO_DESAFIO = timedelta(minutes=5)
+
+
+def _desafio(request: Request, usuario_id: int) -> str:
+    """Prova assinada de que a senha conferiu, válida por 5 min, para o passo do código."""
+    expira = int((request.app.state.agora() + DURACAO_DESAFIO).timestamp())
+    return autenticacao.assinar(f"2fa:{usuario_id}:{expira}", request.app.state.segredo)
+
+
+def _usuario_do_desafio(request: Request, valor: str) -> int | None:
+    payload = autenticacao.abrir_assinatura(valor, request.app.state.segredo)
+    partes = (payload or "").split(":")
+    if len(partes) != 3 or partes[0] != "2fa" or not (partes[1] + partes[2]).isdigit():
+        return None
+    if int(partes[2]) < int(request.app.state.agora().timestamp()):
+        return None
+    return int(partes[1])
+
+
+def _origem(request: Request) -> str | None:
+    # o nginx do host sempre sobrescreve X-Real-IP com o IP de origem
+    return request.headers.get("x-real-ip") or (request.client.host if request.client else None)
+
+
 def _tema(contexto: Contexto | None) -> str:
     return contexto.usuario.tema if contexto else "sistema"
 
@@ -50,8 +76,6 @@ def entrar(
     conexao: store.Conexao = Depends(conexao_db),
 ):
     app = request.app
-    # o nginx do host sempre sobrescreve X-Real-IP com o IP de origem
-    origem = request.headers.get("x-real-ip") or (request.client.host if request.client else None)
     try:
         token, sessao = autenticacao.entrar(
             conexao,
@@ -60,7 +84,15 @@ def entrar(
             app.state.agora(),
             app.state.cfg.max_tentativas,
             agente=request.headers.get("user-agent"),
-            ip=origem,
+            ip=_origem(request),
+        )
+    except autenticacao.SegundoFatorNecessario as precisa:
+        return renderizar(
+            "login_2fa.html",
+            tema="sistema",
+            csrf=None,
+            erro=None,
+            desafio=_desafio(request, precisa.usuario_id),
         )
     except autenticacao.CredenciaisInvalidas:
         return renderizar(
@@ -74,6 +106,50 @@ def entrar(
     except autenticacao.LimiteExcedido:
         erro = t("auth.erro_limite")
         return renderizar("login.html", 429, tema="sistema", csrf=None, email=email, erro=erro)
+    return _concluir_login(request, conexao, token, sessao)
+
+
+@roteador.post("/login/2fa")
+def entrar_com_codigo(
+    request: Request,
+    desafio: str = Form(...),
+    codigo: str = Form(...),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    app = request.app
+    usuario_id = _usuario_do_desafio(request, desafio)
+    if usuario_id is None:
+        return renderizar(
+            "login.html", 400, tema="sistema", csrf=None, email="", erro=t("auth.erro_desafio")
+        )
+    try:
+        token, sessao = autenticacao.concluir_segundo_fator(
+            conexao,
+            usuario_id,
+            codigo,
+            app.state.agora(),
+            app.state.cfg.max_tentativas,
+            agente=request.headers.get("user-agent"),
+            ip=_origem(request),
+        )
+    except autenticacao.CredenciaisInvalidas:
+        return renderizar(
+            "login_2fa.html",
+            401,
+            tema="sistema",
+            csrf=None,
+            desafio=desafio,
+            erro=t("auth.erro_codigo"),
+        )
+    except autenticacao.LimiteExcedido:
+        return renderizar(
+            "login.html", 429, tema="sistema", csrf=None, email="", erro=t("auth.erro_limite")
+        )
+    return _concluir_login(request, conexao, token, sessao)
+
+
+def _concluir_login(request: Request, conexao: store.Conexao, token: str, sessao):
+    app = request.app
     bds = acesso.bds_do_usuario(conexao, sessao.usuario_id)
     destino = "/"
     escolhido = None

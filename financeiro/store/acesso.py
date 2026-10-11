@@ -267,6 +267,8 @@ def excluir_conta(conexao: sqlite3.Connection, usuario_id: int) -> None:
     conexao.execute("DELETE FROM membro WHERE usuario_id = ?", (usuario_id,))
     conexao.execute("DELETE FROM pedido_acesso WHERE usuario_id = ?", (usuario_id,))
     conexao.execute("DELETE FROM sessao WHERE usuario_id = ?", (usuario_id,))
+    conexao.execute("DELETE FROM codigo_recuperacao WHERE usuario_id = ?", (usuario_id,))
+    conexao.execute("DELETE FROM segundo_fator WHERE usuario_id = ?", (usuario_id,))
     conexao.execute(
         "UPDATE usuario SET email = ?, nome = ?, senha_hash = NULL, bd_padrao_id = NULL"
         " WHERE id = ?",
