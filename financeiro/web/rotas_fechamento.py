@@ -57,6 +57,7 @@ def pagina(request: Request, ano: IntOpcional = None, contexto: Contexto = Depen
         tema=contexto.usuario.tema,
         csrf=contexto.csrf,
         bd_nome=contexto.bd_nome,
+        usuario=contexto.usuario,
         papel=contexto.papel,
         ano=_ano(request, ano),
     )

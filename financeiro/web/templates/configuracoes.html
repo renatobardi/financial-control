@@ -1,4 +1,5 @@
-{% extends "base.html" %}
+{% extends "app.html" %}
+{% set tela = "configuracoes" %}
 {% from "_macros.html" import botao, badge, card %}
 {% block titulo %}{{ t("configuracoes.titulo") }}{% endblock %}
 {% macro campo(id, rotulo_chave, nome, valor="", tipo="text", extra="") %}
@@ -13,12 +14,8 @@
             class="h-9 rounded-4xl border border-input bg-background px-3 font-normal">{{ caller() }}</select>
   </label>
 {% endmacro %}
-{% block corpo %}
-<header class="flex items-center justify-between border-b border-border px-6 py-3">
-  <a href="/" class="font-semibold">{{ t("configuracoes.voltar") }}</a>
-  <span class="text-muted-foreground">{{ t("inicio.bd_papel", bd=bd_nome or "", papel=papel or "") }}</span>
-</header>
-<main class="mx-auto flex max-w-3xl flex-col gap-4 p-6">
+{% block conteudo %}
+<div class="mx-auto flex w-full max-w-6xl flex-col gap-4">
   <h1 class="text-xl font-semibold tracking-tight">{{ t("configuracoes.titulo") }}</h1>
   {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
   {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
@@ -154,5 +151,5 @@
     {% endfor %}
   {% endcall %}
   {% endif %}
-</main>
+</div>
 {% endblock %}

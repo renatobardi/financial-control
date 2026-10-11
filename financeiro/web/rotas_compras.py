@@ -99,6 +99,7 @@ def pagina(
         tema=contexto.usuario.tema,
         csrf=contexto.csrf,
         bd_nome=contexto.bd_nome,
+        usuario=contexto.usuario,
         papel=contexto.papel,
         ano=ano or request.app.state.agora().year,
         busca=busca,
@@ -149,6 +150,7 @@ def pagina_ordem(compra_id: int, contexto: Contexto = Depends(exigir_sessao)):
         tema=contexto.usuario.tema,
         csrf=contexto.csrf,
         bd_nome=contexto.bd_nome,
+        usuario=contexto.usuario,
         papel=contexto.papel,
         compra_id=compra_id,
     )

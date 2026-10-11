@@ -67,6 +67,7 @@ def pagina(aba: str = "organizacao", contexto: Contexto = Depends(exigir_sessao)
         tema=contexto.usuario.tema,
         csrf=contexto.csrf,
         bd_nome=contexto.bd_nome,
+        usuario=contexto.usuario,
         papel=contexto.papel,
         abas=abas.ABAS,
         aba=aba,

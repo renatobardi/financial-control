@@ -1,12 +1,9 @@
-{% extends "base.html" %}
+{% extends "app.html" %}
+{% set tela = "cadastros" %}
 {% from "_macros.html" import bloco_lazy %}
 {% block titulo %}{{ t("cadastros.titulo") }}{% endblock %}
-{% block corpo %}
-<header class="flex items-center justify-between border-b border-border px-6 py-3">
-  <a href="/" class="font-semibold">{{ t("configuracoes.voltar") }}</a>
-  <span class="text-muted-foreground">{{ t("inicio.bd_papel", bd=bd_nome, papel=papel) }}</span>
-</header>
-<main class="mx-auto flex max-w-6xl flex-col gap-4 p-6">
+{% block conteudo %}
+<div class="mx-auto flex w-full max-w-6xl flex-col gap-4">
   <h1 class="text-xl font-semibold tracking-tight">{{ t("cadastros.titulo") }}</h1>
   <nav class="flex flex-wrap gap-1" aria-label="{{ t('cadastros.titulo') }}">
     {% for a in abas %}
@@ -17,5 +14,5 @@
     {% endfor %}
   </nav>
   {{ bloco_lazy("/cadastros/" ~ aba ~ "/lista", gatilho="load", altura="h-64") }}
-</main>
+</div>
 {% endblock %}

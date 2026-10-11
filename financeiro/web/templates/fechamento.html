@@ -1,12 +1,9 @@
-{% extends "base.html" %}
+{% extends "app.html" %}
+{% set tela = "fechamento" %}
 {% from "_macros.html" import bloco_lazy %}
 {% block titulo %}{{ t("fechamento_tela.titulo") }}{% endblock %}
-{% block corpo %}
-<header class="flex items-center justify-between border-b border-border px-6 py-3">
-  <a href="/" class="font-semibold">{{ t("configuracoes.voltar") }}</a>
-  <span class="text-muted-foreground">{{ t("inicio.bd_papel", bd=bd_nome, papel=papel) }}</span>
-</header>
-<main class="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+{% block conteudo %}
+<div class="mx-auto flex w-full max-w-6xl flex-col gap-4">
   <div>
     <h1 class="text-xl font-semibold tracking-tight">{{ t("fechamento_tela.titulo") }} · {{ ano }}</h1>
     <p class="text-muted-foreground">{{ t("fechamento_tela.regra") }}</p>
@@ -16,5 +13,5 @@
     <a class="underline" href="/fechamento?ano={{ ano + 1 }}">{{ t("fechamento_tela.ano_proximo") }}</a>
   </nav>
   {{ bloco_lazy("/fechamento/grade?ano=" ~ ano, gatilho="load", altura="h-64") }}
-</main>
+</div>
 {% endblock %}

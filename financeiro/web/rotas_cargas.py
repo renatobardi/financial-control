@@ -103,6 +103,7 @@ def pagina(contexto: Contexto = Depends(exigir_sessao)):
         tema=contexto.usuario.tema,
         csrf=contexto.csrf,
         bd_nome=contexto.bd_nome,
+        usuario=contexto.usuario,
         papel=contexto.papel,
         layouts=[(chave, LAYOUTS[chave]) for chave in _ORDEM],
         pode_editar=contexto.papel in ("Admin", "Editor"),
