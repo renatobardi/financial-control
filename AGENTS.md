@@ -57,6 +57,7 @@ HTML no servidor (Jinja2 + HTMX), Tailwind 4 standalone compilado no `Dockerfile
 | `financeiro/{autenticacao,senha,membros}.py` | Login, sessão, scrypt, papéis e pedidos de acesso |
 | `financeiro/{organizacao,equipe,compras,orcamento,calendario}.py` | Regras dos cadastros, pessoas, compras (OC/OS), PDD e calendário |
 | `financeiro/{consumo,fechamento,realizado,forecast,cenarios,visao_geral}.py` | Consumo do mês, fechamento (congela o realizado), realizado por dimensão, forecast e cenários |
+| `financeiro/onboarding.py` | Passos de configuração de um BD (estado derivado dos dados, bloqueio pelas dependências, dispensa e abertura única); SQL em `store/onboarding.py` |
 | `financeiro/cargas/` | CSV, seis layouts, validação, diário e desfazer |
 | `financeiro/{treemap,graficos}.py` | Layout do treemap e gráficos em SVG (sem JavaScript) |
 | `financeiro/web/` | Rotas FastAPI, templates Jinja e estáticos. Texto visível só do catálogo `i18n/pt-BR.toml` |

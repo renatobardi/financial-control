@@ -3,7 +3,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from financeiro import autenticacao, cenarios, orcamento, store
+from financeiro import autenticacao, cenarios, onboarding, orcamento, store
 from financeiro import senha as senhas
 from financeiro.i18n import t
 from financeiro.store import acesso
@@ -234,6 +234,8 @@ def inicio(
         return RedirectResponse("/login", status_code=303)
     if contexto.bd_id is None:
         return RedirectResponse("/bds", status_code=303)
+    if contexto.papel == "Admin" and onboarding.abrir_primeira_vez(conexao, contexto.bd_id):
+        return RedirectResponse("/onboarding", status_code=303)
     todos = cenarios.garantir_padrao(conexao, contexto.bd_id)
     escolhido = next((c for c in todos if c.id == cenario), todos[0])
     return renderizar(

@@ -1,6 +1,7 @@
 {# Casca das telas logadas: menu lateral, cabeçalho e área de conteúdo (protótipo, Main.dc.html).
    Contexto: tela (chave do item ativo), usuario, bd_nome, papel, csrf e, opcional, base. #}
 {% extends "base.html" %}
+{% from "_macros.html" import bloco_lazy %}
 {% macro icone(nome) %}
 <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   {% if nome == "home" %}<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>
@@ -33,6 +34,11 @@
     </div>
     <nav class="flex grow flex-col gap-4 overflow-y-auto">
       <div class="flex flex-col gap-0.5">{{ item("visao", "/", "visao.titulo", "home") }}</div>
+      {% if papel in ("Admin", "Editor") %}
+      <div class="flex flex-col gap-0.5">
+        {{ bloco_lazy("/onboarding/progresso" ~ ("?ativo=1" if tela == "onboarding" else ""), gatilho="load", altura="h-9") }}
+      </div>
+      {% endif %}
       <div class="flex flex-col gap-0.5">
         <span class="px-3 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{{ t("casca.grupo_financeiro") }}</span>
         {{ item("orcamento", "/orcamento", "orcamento.titulo", "file") }}

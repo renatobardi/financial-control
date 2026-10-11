@@ -5,9 +5,18 @@ from financeiro.store import acesso
 
 
 def semear(
-    ambiente, email="ana@empresa.com", nome="Ana", bds=(("O1", "Admin"),), senha_="correta-123"
+    ambiente,
+    email="ana@empresa.com",
+    nome="Ana",
+    bds=(("O1", "Admin"),),
+    senha_="correta-123",
+    onboarding_aberto=True,
 ):
-    """Cria o usuário e os BDs informados (nome, papel). Devolve (usuario_id, {nome: bd_id})."""
+    """Cria o usuário e os BDs informados (nome, papel). Devolve (usuario_id, {nome: bd_id}).
+
+    O BD nasce com o onboarding "já aberto", para as telas não abrirem redirecionadas;
+    `onboarding_aberto=False` dá o BD recém-criado.
+    """
     c = ambiente.conexao
     usuario = acesso.achar_usuario_por_email(c, email)
     usuario_id = (
@@ -17,6 +26,11 @@ def semear(
     for nome_bd, papel in bds:
         existente = c.execute("SELECT id FROM bd WHERE nome = ?", (nome_bd,)).fetchone()
         bd_id = existente[0] if existente else acesso.criar_bd(c, nome_bd, nome_bd[:2].upper())
+        if not existente:
+            c.execute(
+                "UPDATE bd SET onboarding_aberto = ? WHERE id = ?", (int(onboarding_aberto), bd_id)
+            )
+            c.commit()
         acesso.adicionar_membro(c, bd_id, usuario_id, papel)
         ids[nome_bd] = bd_id
     return usuario_id, ids
