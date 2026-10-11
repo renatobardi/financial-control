@@ -5,7 +5,7 @@ import hmac
 import secrets
 from datetime import datetime, timedelta
 
-from financeiro import senha
+from financeiro import doisfatores, senha
 from financeiro.store import Conexao, acesso, sessao
 from financeiro.store.sessao import Sessao
 
@@ -23,6 +23,15 @@ class CredenciaisInvalidas(Exception):
 
 class LimiteExcedido(Exception):
     """Tentativas demais na janela: o login fica bloqueado até a janela passar."""
+
+
+class SegundoFatorNecessario(Exception):
+    """Senha certa, mas a conta tem 2FA: falta o código. Ainda não há sessão."""
+
+    def __init__(self, usuario_id: int, email: str):
+        super().__init__(email)
+        self.usuario_id = usuario_id
+        self.email = email
 
 
 def _iso(momento: datetime) -> str:
@@ -67,20 +76,52 @@ def entrar(
     if usuario is None or not confere:
         sessao.registrar_tentativa(conexao, email, _iso(agora))
         raise CredenciaisInvalidas(email)
+    if doisfatores.ativo(conexao, usuario.id):
+        # A contagem de tentativas NÃO zera aqui: senão quem sabe a senha chutaria códigos sem fim.
+        raise SegundoFatorNecessario(usuario.id, usuario.email)
     sessao.limpar_tentativas(conexao, email)
+    return _abrir_sessao(conexao, usuario.id, agora, agente, ip)
+
+
+def _abrir_sessao(
+    conexao: Conexao, usuario_id: int, agora: datetime, agente: str | None, ip: str | None
+) -> tuple[str, Sessao]:
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(24)
     sessao.criar(
         conexao,
         hash_token(token),
-        usuario.id,
+        usuario_id,
         csrf,
         _iso(agora),
         _iso(agora + DURACAO_SESSAO),
         (agente or "")[:200] or None,
         (ip or "")[:64] or None,
     )
-    return token, Sessao(usuario.id, None, csrf)
+    return token, Sessao(usuario_id, None, csrf)
+
+
+def concluir_segundo_fator(
+    conexao: Conexao,
+    usuario_id: int,
+    digitado: str,
+    agora: datetime,
+    max_tentativas: int = MAX_TENTATIVAS,
+    agente: str | None = None,
+    ip: str | None = None,
+) -> tuple[str, Sessao]:
+    """Confere o código e abre a sessão. Erro conta como tentativa do e-mail, como a senha."""
+    usuario = acesso.achar_usuario(conexao, usuario_id)
+    if usuario is None:
+        raise CredenciaisInvalidas(str(usuario_id))
+    desde = _iso(agora - JANELA_TENTATIVAS)
+    if sessao.contar_tentativas(conexao, usuario.email, desde) >= max_tentativas:
+        raise LimiteExcedido(usuario.email)
+    if not doisfatores.conferir_login(conexao, usuario_id, digitado, agora):
+        sessao.registrar_tentativa(conexao, usuario.email, _iso(agora))
+        raise CredenciaisInvalidas(usuario.email)
+    sessao.limpar_tentativas(conexao, usuario.email)
+    return _abrir_sessao(conexao, usuario_id, agora, agente, ip)
 
 
 def sessao_do_token(conexao: Conexao, token: str, agora: datetime) -> Sessao | None:

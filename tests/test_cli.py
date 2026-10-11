@@ -150,3 +150,34 @@ def test_backup_gera_copia_consistente_e_nao_sobrescreve(tmp_path, capsys):
     assert copia.execute("SELECT COUNT(*) FROM pessoa").fetchone()[0] >= 1
     assert copia.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     assert "já existe" in capsys.readouterr().err
+
+
+def test_desativar_2fa_tira_a_verificacao_de_quem_perdeu_o_celular(tmp_path, capsys):
+    from financeiro import doisfatores, store
+    from financeiro.store import acesso
+
+    ambiente = _ambiente(tmp_path, FINANCEIRO_ADMIN_SENHA="uma-senha-forte-1")
+    cli.main(
+        ["criar-admin", "--email", "a@empresa.com", "--nome", "A", "--bd", "BD"], ambiente=ambiente
+    )
+    conexao = store.abrir(tmp_path / "f.db")
+    usuario = acesso.achar_usuario_por_email(conexao, "a@empresa.com")
+    doisfatores.iniciar_ativacao(conexao, usuario.id)
+    conexao.execute("UPDATE segundo_fator SET ativo = 1")
+    conexao.commit()
+    conexao.close()
+
+    codigo = cli.main(["desativar-2fa", "--email", "a@empresa.com"], ambiente=ambiente)
+
+    assert codigo == 0
+    assert _consultar(tmp_path, "SELECT COUNT(*) FROM segundo_fator") == [(0,)]
+    assert "a@empresa.com" in capsys.readouterr().out
+
+
+def test_desativar_2fa_de_email_desconhecido_falha(tmp_path, capsys):
+    ambiente = _ambiente(tmp_path)
+
+    codigo = cli.main(["desativar-2fa", "--email", "ninguem@empresa.com"], ambiente=ambiente)
+
+    assert codigo == 1
+    assert "ninguem@empresa.com" in capsys.readouterr().err

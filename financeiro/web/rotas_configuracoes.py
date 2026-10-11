@@ -3,9 +3,9 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from financeiro import autenticacao, membros, senha, store
+from financeiro import autenticacao, doisfatores, membros, senha, store, totp
 from financeiro.i18n import t
-from financeiro.store import acesso
+from financeiro.store import acesso, segundo_fator
 from financeiro.web.rotas_acesso import NOME_COOKIE
 from financeiro.web.sessao import (
     Contexto,
@@ -33,7 +33,7 @@ TELAS = (
 )
 PAPEIS = ("Admin", "Editor", "Leitor")
 SENHA_MINIMA = 8
-ABAS = ("perfil", "bds", "sessoes", "membros", "conta")
+ABAS = ("perfil", "bds", "sessoes", "seguranca", "membros", "conta")
 
 
 def _pagina(
@@ -42,6 +42,7 @@ def _pagina(
     *,
     aba: str = "perfil",
     agora: datetime | None = None,
+    codigos: list[str] | None = None,
     ok: str | None = None,
     erro: str | None = None,
     status: int = 200,
@@ -68,6 +69,8 @@ def _pagina(
         eh_admin=eh_admin,
         aba=aba,
         sessoes=_sessoes(conexao, contexto, agora) if aba == "sessoes" else [],
+        dois_fatores=_dois_fatores(conexao, usuario) if aba == "seguranca" else None,
+        codigos_recuperacao=codigos or [],
         abas=[a for a in ABAS if a != "membros" or eh_admin],
         ultimo_admin_em=set(acesso.bds_em_que_e_ultimo_admin(conexao, usuario.id)),
         usuario_id=usuario.id,
@@ -95,6 +98,18 @@ def _sessoes(conexao: store.Conexao, contexto: Contexto, agora: datetime | None)
         }
         for x in abertas
     ]
+
+
+def _dois_fatores(conexao: store.Conexao, usuario) -> dict:
+    atual = segundo_fator.obter(conexao, usuario.id)
+    pendente = atual is not None and not atual.ativo
+    return {
+        "ativo": bool(atual and atual.ativo),
+        "pendente": pendente,
+        "segredo": atual.segredo if pendente else "",
+        "uri": totp.uri(usuario.email, atual.segredo) if pendente else "",
+        "restantes": doisfatores.codigos_restantes(conexao, usuario.id),
+    }
 
 
 @roteador.get("")
@@ -403,3 +418,55 @@ def encerrar_sessao(
     return _pagina(
         conexao, contexto, aba="sessoes", agora=agora, ok=t("configuracoes.ok_sessao_encerrada")
     )
+
+
+@roteador.post("/2fa/iniciar")
+def iniciar_dois_fatores(
+    contexto: Contexto = Depends(exigir_csrf),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    if doisfatores.ativo(conexao, contexto.usuario.id):
+        return _pagina(
+            conexao,
+            contexto,
+            aba="seguranca",
+            erro=t("configuracoes.erro_2fa_ja_ativo"),
+            status=409,
+        )
+    doisfatores.iniciar_ativacao(conexao, contexto.usuario.id)
+    return _pagina(conexao, contexto, aba="seguranca")
+
+
+@roteador.post("/2fa/confirmar")
+def confirmar_dois_fatores(
+    request: Request,
+    codigo: str = Form(""),
+    contexto: Contexto = Depends(exigir_csrf),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    try:
+        codigos = doisfatores.confirmar_ativacao(
+            conexao, contexto.usuario.id, codigo, request.app.state.agora()
+        )
+    except doisfatores.CodigoInvalido:
+        return _pagina(
+            conexao, contexto, aba="seguranca", erro=t("configuracoes.erro_2fa_codigo"), status=400
+        )
+    return _pagina(
+        conexao, contexto, aba="seguranca", codigos=codigos, ok=t("configuracoes.ok_2fa_ativado")
+    )
+
+
+@roteador.post("/2fa/desativar")
+def desativar_dois_fatores(
+    senha_atual: str = Form("", alias="senha"),
+    contexto: Contexto = Depends(exigir_csrf),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    usuario = acesso.achar_usuario(conexao, contexto.usuario.id)
+    if usuario is None or not senha.verificar(senha_atual, usuario.senha_hash):
+        return _pagina(
+            conexao, contexto, aba="seguranca", erro=t("configuracoes.erro_senha_atual"), status=400
+        )
+    doisfatores.desativar(conexao, usuario.id)
+    return _pagina(conexao, contexto, aba="seguranca", ok=t("configuracoes.ok_2fa_desativado"))
