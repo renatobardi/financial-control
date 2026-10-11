@@ -34,6 +34,16 @@ _Avoid_: convite (convite parte do Admin)
 O chamado que um Admin faz a um e-mail para entrar num BD, com um papel.
 _Avoid_: pedido de acesso
 
+### Configuração do BD
+
+**Onboarding**:
+O roteiro guiado que leva um BD novo do vazio até estar pronto para uso, na ordem em que os cadastros dependem uns dos outros. Abre sozinho uma vez, para o primeiro Admin do BD, e depois sob demanda; Admin e Editor o veem.
+_Avoid_: wizard, setup, tutorial, assistente
+
+**Passo**:
+Uma etapa do onboarding, ligada a um cadastro ou a uma carga. Está feito, pendente, bloqueado (falta uma etapa da qual depende) ou não se aplica (etapa opcional dispensada).
+_Avoid_: tarefa, fase, item
+
 ### Pessoas e custo
 
 **Empresa**:
