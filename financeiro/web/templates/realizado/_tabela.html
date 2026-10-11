@@ -1,4 +1,10 @@
+{% from "_macros.html" import cartao %}
 <div id="tabela-realizado" class="flex flex-col gap-3">
+  <dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    {% call cartao(t("realizado.tile_realizado")) %}{{ valor(tabela.total_realizado) }}{% endcall %}
+    {% call cartao(t("realizado.tile_pessoas")) %}{{ valor(total_pessoas) }}{% endcall %}
+    {% call cartao(t("realizado.tile_compras")) %}{{ valor(total_compras) }}{% endcall %}
+  </dl>
   {% if tabela.nota %}
   <div role="note" class="rounded-xl bg-muted px-3 py-2">{{ tabela.nota }}</div>
   {% endif %}
@@ -7,8 +13,9 @@
     <table class="w-full text-left text-sm">
       <thead class="bg-muted text-muted-foreground"><tr>
         <th class="px-3 py-2 font-medium">{{ t("realizado.dim_" ~ tabela.dimensao) }}</th>
-        {% for numero in range(1, 13) %}<th class="px-2 py-2 text-right font-medium">{{ mes(tabela.ano, numero) }}</th>{% endfor %}
+        {% for n in meses_fechados %}<th class="px-2 py-2 text-right font-medium">{{ mes(tabela.ano, n + 1) }}</th>{% endfor %}
         <th class="px-3 py-2 text-right font-medium">{{ t("realizado.col_realizado") }}</th>
+        <th class="px-3 py-2 font-medium">{{ t("realizado.col_percentual") }}</th>
         <th class="px-3 py-2 text-right font-medium">{{ t("realizado.col_forecast") }}</th>
         <th class="px-3 py-2 text-right font-medium">{{ t("realizado.col_total_ano") }}</th>
         {% if com_orcamento %}
@@ -20,25 +27,33 @@
         {% for l in tabela.linhas %}
         <tr class="border-t border-border">
           <td class="px-3 py-2 font-medium">{{ l.rotulo }}</td>
-          {% for v in l.meses %}
-          <td class="px-2 py-2 text-right {{ 'text-muted-foreground' if v is none }}">{{ t("realizado.mes_aberto") if v is none else moeda(v) }}</td>
-          {% endfor %}
-          <td class="px-3 py-2 text-right">{{ moeda(l.realizado) }}</td>
-          <td class="px-3 py-2 text-right">{{ moeda(l.forecast) }}</td>
-          <td class="px-3 py-2 text-right font-semibold">{{ moeda(l.total_ano) }}</td>
+          {% for n in meses_fechados %}<td class="px-2 py-2 text-right">{{ valor(l.meses[n] or 0) }}</td>{% endfor %}
+          <td class="px-3 py-2 text-right">{{ valor(l.realizado) }}</td>
+          <td class="px-3 py-2">
+            <span class="flex items-center gap-2">
+              <span class="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+                <span data-barra="{{ (l.realizado * 100 // barra_base) if barra_base else 0 }}" class="block h-full rounded-full bg-primary"
+                      style="width: {{ (l.realizado * 100 // barra_base) if barra_base else 0 }}%"></span>
+              </span>
+              <span class="tabular-nums text-xs text-muted-foreground">{{ ((l.realizado * 100 // tabela.total_realizado) if tabela.total_realizado else 0) }}%</span>
+            </span>
+          </td>
+          <td class="px-3 py-2 text-right">{{ valor(l.forecast) }}</td>
+          <td class="px-3 py-2 text-right font-semibold">{{ valor(l.total_ano) }}</td>
           {% if com_orcamento %}
-          <td class="px-3 py-2 text-right">{{ "—" if l.orcamento is none else moeda(l.orcamento) }}</td>
-          <td class="px-3 py-2 text-right {{ 'text-destructive' if l.gap is not none and l.gap < 0 }}">{{ "—" if l.gap is none else moeda(l.gap) }}</td>
+          <td class="px-3 py-2 text-right">{{ valor(l.orcamento) }}</td>
+          <td class="px-3 py-2 text-right {{ 'text-destructive' if l.gap is not none and l.gap < 0 }}">{{ valor(l.gap) }}</td>
           {% endif %}
         </tr>
         {% endfor %}
       </tbody>
-      <tfoot><tr class="border-t border-border font-semibold">
+      <tfoot><tr class="border-t-2 border-border font-semibold">
         <td class="px-3 py-2">{{ t("realizado.total") }}</td>
-        <td class="px-3 py-2" colspan="12"></td>
-        <td class="px-3 py-2 text-right">{{ moeda(tabela.total_realizado) }}</td>
-        <td class="px-3 py-2 text-right">{{ moeda(tabela.total_forecast) }}</td>
-        <td class="px-3 py-2 text-right">{{ moeda(tabela.total_realizado + tabela.total_forecast) }}</td>
+        {% for n in meses_fechados %}<td class="px-2 py-2 text-right">{{ valor(totais_mes[n]) }}</td>{% endfor %}
+        <td class="px-3 py-2 text-right">{{ valor(tabela.total_realizado) }}</td>
+        <td class="px-3 py-2"></td>
+        <td class="px-3 py-2 text-right">{{ valor(tabela.total_forecast) }}</td>
+        <td class="px-3 py-2 text-right">{{ valor(tabela.total_realizado + tabela.total_forecast) }}</td>
         {% if com_orcamento %}<td class="px-3 py-2" colspan="2"></td>{% endif %}
       </tr></tfoot>
     </table>

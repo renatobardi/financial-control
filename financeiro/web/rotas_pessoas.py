@@ -44,6 +44,7 @@ def _lista(
     return renderizar(
         "pessoas/_lista.html",
         status,
+        formato=contexto.usuario.formato_valor,
         linhas=linhas,
         de=de,
         ate=ate,

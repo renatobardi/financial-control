@@ -64,6 +64,7 @@ def _painel(
     return renderizar(
         "forecast/_painel.html",
         status,
+        formato=contexto.usuario.formato_valor,
         cenarios=todos,
         cenario=cenario,
         base=base,

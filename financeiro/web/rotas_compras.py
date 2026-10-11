@@ -35,6 +35,7 @@ def _lista(
     return renderizar(
         "compras/_lista.html",
         status,
+        formato=contexto.usuario.formato_valor,
         linhas=linhas,
         ano=ano,
         busca=busca,
@@ -69,6 +70,7 @@ def _detalhe(
     return renderizar(
         "compras/_detalhe.html",
         status,
+        formato=contexto.usuario.formato_valor,
         ordem=ordem,
         meses=compras.valores_por_mes(conexao, contexto.bd_id, compra_id, ano),
         historico=compras.historico(conexao, contexto.bd_id, compra_id),
