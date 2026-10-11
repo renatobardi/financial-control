@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from financeiro import consumo, custo, i18n, vigencia
+from financeiro.i18n import t
 from financeiro.store import Conexao, ErroDeIntegridade, acesso, cadastros
 from financeiro.store import compras as armazem
 from financeiro.store import consumo as armazem_consumo
@@ -72,7 +73,7 @@ def criar_prevista(
     agora: datetime,
 ) -> int:
     if tipo not in TIPOS:
-        raise ComprasInvalido("Tipo da ordem: OC ou OS.")
+        raise ComprasInvalido(t("erros.tipo_ordem"))
     try:
         conexao.commit()
         compra_id = armazem.criar_compra(
@@ -86,7 +87,7 @@ def criar_prevista(
         conexao.commit()
     except ErroDeIntegridade as erro:
         conexao.rollback()
-        raise ComprasInvalido("Demanda não encontrada neste BD.") from erro
+        raise ComprasInvalido(t("erros.demanda_nao_encontrada")) from erro
     return compra_id
 
 
@@ -106,19 +107,19 @@ def editar(
 ) -> None:
     atual = armazem.achar_compra(conexao, bd_id, compra_id)
     if atual is None:
-        raise ComprasInvalido("Ordem não encontrada neste BD.")
+        raise ComprasInvalido(t("erros.ordem_nao_encontrada"))
     if atual.status == "cancelada":
-        raise ComprasInvalido("Ordem cancelada não muda mais.")
+        raise ComprasInvalido(t("erros.ordem_cancelada_nao_muda"))
     novo_status = status or atual.status
     if novo_status not in STATUS:
-        raise ComprasInvalido(f"Status inválido: {novo_status!r}.")
+        raise ComprasInvalido(t("erros.status_invalido", status=novo_status))
     novo_numero = (numero.strip() if numero else None) or atual.numero
     novo_fornecedor = fornecedor_id if fornecedor_id is not None else atual.fornecedor_id
     novo_tipo = tipo or atual.tipo
     if novo_tipo not in TIPOS:
-        raise ComprasInvalido("Tipo da ordem: OC ou OS.")
+        raise ComprasInvalido(t("erros.tipo_ordem"))
     if novo_status == "emitida" and (novo_numero.startswith("PREV-") or novo_fornecedor is None):
-        raise ComprasInvalido("Para emitir, informe o número da ordem e o fornecedor.")
+        raise ComprasInvalido(t("erros.emitir_exige"))
     if novo_status == "cancelada":
         fechados = [
             m
@@ -126,10 +127,7 @@ def editar(
             if armazem_consumo.mes_esta_fechado(conexao, bd_id, m)
         ]
         if fechados:
-            raise ComprasInvalido(
-                f"A ordem tem valor em {_rotulo(fechados[0])}, que está fechado: "
-                "reabra o mês para cancelar."
-            )
+            raise ComprasInvalido(t("erros.cancelar_mes_fechado", mes=_rotulo(fechados[0])))
     mudancas = []
     if novo_status != atual.status:
         mudancas.append(f"status: {atual.status} → {novo_status}")
@@ -157,9 +155,7 @@ def editar(
         conexao.commit()
     except ErroDeIntegridade as erro:
         conexao.rollback()
-        raise ComprasInvalido(
-            "Número já usado por outra ordem, ou fornecedor e demanda de outro BD."
-        ) from erro
+        raise ComprasInvalido(t("erros.numero_repetido")) from erro
 
 
 def definir_valor(
@@ -174,19 +170,19 @@ def definir_valor(
     """Valor líquido do mês. Só mês aberto (forecast); realizado é só leitura."""
     atual = armazem.achar_compra(conexao, bd_id, compra_id)
     if atual is None:
-        raise ComprasInvalido("Ordem não encontrada neste BD.")
+        raise ComprasInvalido(t("erros.ordem_nao_encontrada"))
     if atual.status == "cancelada":
-        raise ComprasInvalido("Ordem cancelada não recebe valor.")
+        raise ComprasInvalido(t("erros.ordem_cancelada_sem_valor"))
     try:
         vigencia.validar_mes(mes)
     except ValueError as erro:
-        raise ComprasInvalido("Informe o mês no formato AAAA-MM.") from erro
+        raise ComprasInvalido(t("erros.mes_formato")) from erro
     if isinstance(liquido_centavos, bool) or not isinstance(liquido_centavos, int):
         raise TypeError("valor em centavos inteiros")
     if liquido_centavos < 0:
-        raise ComprasInvalido("O valor não pode ser negativo.")
+        raise ComprasInvalido(t("erros.valor_negativo"))
     if armazem_consumo.mes_esta_fechado(conexao, bd_id, mes):
-        raise ComprasInvalido(f"{_rotulo(mes)} está fechado: o realizado é só leitura.")
+        raise ComprasInvalido(t("erros.mes_fechado_leitura", mes=_rotulo(mes)))
     armazem.gravar_valor(conexao, bd_id, compra_id, mes, liquido_centavos)
     armazem.registrar_historico(
         conexao, bd_id, compra_id, _iso(agora), usuario_id,

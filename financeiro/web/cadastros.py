@@ -68,12 +68,14 @@ class AcaoLinha:
     acao: str
     rotulo: str  # chave do catálogo
     com_texto: str | None = None  # nome do campo de texto (ex.: renomear), valor inicial na linha
+    confirmar: str | None = None  # chave do catálogo da pergunta de confirmação
 
 
 @dataclass
 class Aba:
     colunas: list[str]
-    linhas: list[tuple[int | None, list[str], str]]  # (id, células, texto editável da linha)
+    # (id, células, texto editável da linha[, ações permitidas na linha; ausente = todas])
+    linhas: list[tuple]
     formularios: list[Formulario]
     acoes_linha: list[AcaoLinha] = field(default_factory=list)
     paginada: bool = True
@@ -326,8 +328,10 @@ def _gerar_calendario(conexao, bd_id, dados, mes_atual):
 def _ajustar_calendario(conexao, bd_id, dados, mes_atual):
     try:
         calendario.ajustar(
-            conexao, bd_id, _ano(dados), _inteiro(dados, "mes"), _inteiro(dados, "horas")
+            conexao, bd_id, _ano(dados), _inteiro(dados, "mes"), _inteiro(dados, "horas"), mes_atual
         )
+    except calendario.AjusteBloqueado as erro:
+        raise ErroCadastro(f"cadastros.erro_calendario_{erro.motivo}", 409) from erro
     except ValueError as erro:
         raise ErroCadastro("cadastros.erro_campo_obrigatorio") from erro
     return "cadastros.ok_calendario"
@@ -675,6 +679,7 @@ def montar(conexao: Conexao, bd_id: int, aba: str, ano: int, mes_atual: str) -> 
                         nomes_pessoa.get(v.pessoa_id, "—"),
                     ],
                     v.codigo,
+                    {"cancelar"} if v.estado == "aberta" else set(),
                 )
                 for v in itens
             ],
@@ -728,7 +733,7 @@ def montar(conexao: Conexao, bd_id: int, aba: str, ano: int, mes_atual: str) -> 
                     ],
                 ),
             ],
-            [AcaoLinha("cancelar", "cadastros.cancelar_vaga")],
+            [AcaoLinha("cancelar", "cadastros.cancelar_vaga", confirmar="confirmar.cancelar_vaga")],
         )
     if aba == "markup":
         itens = cadastros.listar_markups(conexao, bd_id)

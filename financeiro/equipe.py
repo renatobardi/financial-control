@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import NamedTuple
 
 from financeiro import consumo, vigencia
+from financeiro.i18n import t
 from financeiro.store import Conexao, ErroDeIntegridade, organizacao, pessoas
 
 
@@ -117,14 +118,14 @@ def nova_pessoa(
     admissao: str,
 ) -> int:
     if not matricula.strip() or not nome.strip():
-        raise EquipeInvalida("Informe matrícula e nome.")
+        raise EquipeInvalida(t("erros.matricula_nome"))
     try:
         vigencia.validar_mes(admissao)
     except ValueError as erro:
-        raise EquipeInvalida("Informe o início no formato AAAA-MM.") from erro
+        raise EquipeInvalida(t("erros.inicio_formato")) from erro
     unidade = organizacao.achar_org(conexao, bd_id, org_id)
     if unidade is None or unidade.tipo != "Squad":
-        raise EquipeInvalida("A unidade da pessoa precisa ser um squad deste BD.")
+        raise EquipeInvalida(t("erros.unidade_squad"))
     try:
         return pessoas.criar_pessoa(
             conexao,
@@ -138,9 +139,7 @@ def nova_pessoa(
             None,
         )
     except ErroDeIntegridade as erro:
-        raise EquipeInvalida(
-            "Matrícula já cadastrada, ou cargo ou tema não pertence a este BD."
-        ) from erro
+        raise EquipeInvalida(t("erros.matricula_repetida")) from erro
 
 
 def editar(
@@ -151,22 +150,23 @@ def editar(
     cargo_id: int | None = None,
     tema_id: int | None = None,
     desligamento: str | None = None,
+    nome: str | None = None,
 ) -> None:
-    """Muda squad, cargo, tema e desligamento. Mês fechado não muda: está congelado."""
+    """Muda nome, squad, cargo, tema e desligamento. Mês fechado não muda: está congelado."""
     atual = next((p for p in pessoas.listar_detalhe(conexao, bd_id) if p.id == pessoa_id), None)
     if atual is None:
-        raise EquipeInvalida("Pessoa não encontrada neste BD.")
+        raise EquipeInvalida(t("erros.pessoa_nao_encontrada"))
     if desligamento:
         try:
             vigencia.validar_mes(desligamento)
         except ValueError as erro:
-            raise EquipeInvalida("Informe o desligamento no formato AAAA-MM.") from erro
+            raise EquipeInvalida(t("erros.desligamento_formato")) from erro
         if desligamento < atual.admissao:
-            raise EquipeInvalida("O desligamento não pode ser anterior à admissão.")
+            raise EquipeInvalida(t("erros.desligamento_anterior"))
     novo_org = org_id if org_id is not None else atual.org_id
     unidade = organizacao.achar_org(conexao, bd_id, novo_org)
     if unidade is None or unidade.tipo != "Squad":
-        raise EquipeInvalida("A unidade da pessoa precisa ser um squad deste BD.")
+        raise EquipeInvalida(t("erros.unidade_squad"))
     try:
         pessoas.atualizar_pessoa(
             conexao,
@@ -176,6 +176,7 @@ def editar(
             cargo_id if cargo_id is not None else atual.cargo_id,
             tema_id if tema_id is not None else atual.tema_id,
             (desligamento or None) if desligamento is not None else atual.desligamento,
+            nome.strip() if nome and nome.strip() else None,
         )
     except ErroDeIntegridade as erro:
-        raise EquipeInvalida("Cargo ou tema não pertence a este BD.") from erro
+        raise EquipeInvalida(t("erros.cargo_tema_outro_bd")) from erro

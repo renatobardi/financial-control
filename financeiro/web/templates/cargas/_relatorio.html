@@ -61,7 +61,7 @@
     {% if r.rejeicoes %}<a class="underline" href="/cargas/{{ r.carga_id }}/rejeicoes.csv">{{ t("cargas.baixar_rejeicoes") }}</a>{% endif %}
     {% if pode_editar and r.estado == "ativa" %}
     <form method="post" action="/cargas/{{ r.carga_id }}/desfazer"
-          hx-post="/cargas/{{ r.carga_id }}/desfazer" hx-target="#resultado" hx-swap="innerHTML">
+          hx-post="/cargas/{{ r.carga_id }}/desfazer" hx-target="#resultado" hx-swap="innerHTML" hx-confirm="{{ t('confirmar.desfazer_carga') }}">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       <button type="submit" class="rounded-4xl bg-secondary px-3 py-1 text-secondary-foreground">{{ t("cargas.desfazer") }}</button>
     </form>

@@ -231,3 +231,22 @@ def salvar_valor(
         status = 409 if "fechado" in str(erro) else 400
         return _detalhe(request, conexao, contexto, compra_id, erro=str(erro), status=status)
     return _detalhe(request, conexao, contexto, compra_id, ok=t("compras.ok_valor"))
+
+
+@roteador.post("/{compra_id}/cancelar")
+def cancelar(
+    request: Request,
+    compra_id: int,
+    contexto: Contexto = Depends(exigir_edicao),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    if compras.achar(conexao, contexto.bd_id, compra_id) is None:
+        raise HTTPException(status_code=404)
+    try:
+        compras.editar(
+            conexao, contexto.bd_id, compra_id, contexto.usuario.id, request.app.state.agora(),
+            status="cancelada",
+        )  # fmt: skip
+    except compras.ComprasInvalido as erro:
+        return _detalhe(request, conexao, contexto, compra_id, erro=str(erro), status=409)
+    return _detalhe(request, conexao, contexto, compra_id, ok=t("compras.ok_cancelada"))

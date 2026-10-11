@@ -70,13 +70,31 @@
           <td class="px-3 py-2">{{ p.desligamento or t("pessoas.ativo") }}</td>
           {% if pode_editar %}
           <td class="px-3 py-2">
-            <form method="post" action="/pessoas/{{ p.id }}" hx-post="/pessoas/{{ p.id }}" hx-target="#pessoas" hx-swap="outerHTML"
-                  class="inline-flex items-center gap-2">
-              <input type="hidden" name="csrf" value="{{ csrf }}">
-              <input name="desligamento" value="{{ p.desligamento or '' }}" placeholder="2026-12" aria-label="{{ t('pessoas.col_desligamento') }}"
-                     class="h-8 w-28 rounded-4xl border border-input bg-background px-3">
-              <button type="submit" class="rounded-4xl bg-secondary px-3 py-1 text-secondary-foreground">{{ t("pessoas.editar") }}</button>
-            </form>
+            <details>
+              <summary class="cursor-pointer underline">{{ t("pessoas.editar_pessoa") }}</summary>
+              <form method="post" action="/pessoas/{{ p.id }}" hx-post="/pessoas/{{ p.id }}" hx-target="#pessoas" hx-swap="outerHTML"
+                    class="mt-2 flex flex-wrap items-end gap-2">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.c_nome") }}
+                  <input name="nome" value="{{ p.nome }}" required class="h-8 rounded-4xl border border-input bg-background px-3 text-sm font-normal"></label>
+                <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.c_unidade") }}
+                  <select name="org_id" class="h-8 rounded-4xl border border-input bg-background px-2 text-sm font-normal">
+                    {% for s in squads %}<option value="{{ s.id }}" {{ "selected" if s.nome == p.unidade }}>{{ s.nome }}</option>{% endfor %}
+                  </select></label>
+                <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.c_cargo") }}
+                  <select name="cargo_id" class="h-8 rounded-4xl border border-input bg-background px-2 text-sm font-normal">
+                    {% for c in cargos %}<option value="{{ c.id }}" {{ "selected" if c.nome == p.cargo and c.empresa == p.empresa }}>{{ c.nome }} · {{ c.empresa }}</option>{% endfor %}
+                  </select></label>
+                <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.c_tema") }}
+                  <select name="tema_id" class="h-8 rounded-4xl border border-input bg-background px-2 text-sm font-normal">
+                    {% for tm in temas %}<option value="{{ tm.id }}" {{ "selected" if tm.codigo == p.tema }}>{{ tm.codigo }} · {{ tm.nome }}</option>{% endfor %}
+                  </select></label>
+                <label class="flex flex-col gap-1 text-xs font-medium">{{ t("pessoas.col_desligamento") }}
+                  <input name="desligamento" value="{{ p.desligamento or '' }}" placeholder="2026-12"
+                         class="h-8 w-28 rounded-4xl border border-input bg-background px-3 text-sm font-normal"></label>
+                <button type="submit" class="h-8 rounded-4xl bg-primary px-3 text-primary-foreground">{{ t("pessoas.editar") }}</button>
+              </form>
+            </details>
           </td>
           {% endif %}
         </tr>

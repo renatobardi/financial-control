@@ -137,6 +137,7 @@ def nova(
 def editar(
     request: Request,
     pessoa_id: int,
+    nome: str = Form(""),
     org_id: str = Form(""),
     cargo_id: str = Form(""),
     tema_id: str = Form(""),
@@ -153,6 +154,7 @@ def editar(
             cargo_id=int(cargo_id) if cargo_id.isdigit() else None,
             tema_id=int(tema_id) if tema_id.isdigit() else None,
             desligamento=desligamento,
+            nome=nome or None,
         )
     except equipe.EquipeInvalida as erro:
         status = 404 if "não encontrada" in str(erro) else 400

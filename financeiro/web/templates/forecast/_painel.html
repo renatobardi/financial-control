@@ -28,7 +28,7 @@
       <button type="submit" class="rounded-4xl bg-secondary px-3 py-1.5 text-secondary-foreground">{{ t("forecast.duplicar") }}</button>
     </form>
     <form method="post" action="/forecast/cenarios/{{ cenario.id }}/remover" hx-post="/forecast/cenarios/{{ cenario.id }}/remover"
-          hx-target="#forecast" hx-swap="outerHTML">
+          hx-target="#forecast" hx-swap="outerHTML" hx-confirm="{{ t('confirmar.remover_cenario') }}">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       <button type="submit" class="rounded-4xl bg-secondary px-3 py-1.5 text-secondary-foreground">{{ t("forecast.remover") }}</button>
     </form>

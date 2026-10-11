@@ -31,6 +31,11 @@
         <input name="descricao" value="{{ ordem.descricao }}" class="h-9 rounded-4xl border border-input bg-background px-3.5 text-sm font-normal"></label>
       <button type="submit" class="h-9 rounded-4xl bg-primary px-4 font-medium text-primary-foreground">{{ t("compras.salvar") }}</button>
     </form>
+    <form method="post" action="/compras/{{ ordem.id }}/cancelar" hx-post="/compras/{{ ordem.id }}/cancelar"
+          hx-target="#ordem" hx-swap="outerHTML" hx-confirm="{{ t('confirmar.cancelar_ordem') }}" class="mt-3">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="rounded-4xl bg-destructive/10 px-3 py-1 text-destructive">{{ t("compras.cancelar_ordem") }}</button>
+    </form>
     {% else %}
     <p>{{ ordem.fornecedor or t("compras.a_definir") }} · {{ ordem.demanda }} · {{ ordem.descricao }}</p>
     {% endif %}

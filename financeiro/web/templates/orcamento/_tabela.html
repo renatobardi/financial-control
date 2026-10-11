@@ -38,12 +38,12 @@
     {% if pode_editar and selecionada.estado == "rascunho" %}
     <div class="flex gap-2">
       <form method="post" action="/orcamento/{{ selecionada.id }}/descartar"
-            hx-post="/orcamento/{{ selecionada.id }}/descartar" hx-target="#pdd" hx-swap="outerHTML">
+            hx-post="/orcamento/{{ selecionada.id }}/descartar" hx-target="#pdd" hx-swap="outerHTML" hx-confirm="{{ t('confirmar.descartar_revisao') }}">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         {{ enviar("orcamento.descartar", "secundario") }}
       </form>
       <form method="post" action="/orcamento/{{ selecionada.id }}/aprovar"
-            hx-post="/orcamento/{{ selecionada.id }}/aprovar" hx-target="#pdd" hx-swap="outerHTML">
+            hx-post="/orcamento/{{ selecionada.id }}/aprovar" hx-target="#pdd" hx-swap="outerHTML" hx-confirm="{{ t('confirmar.aprovar_revisao') }}">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         {{ enviar("orcamento.aprovar") }}
       </form>
@@ -97,7 +97,7 @@
           {% if pode_editar and selecionada.estado == "rascunho" %}
           <td class="px-3 py-2">
             <form method="post" action="/orcamento/{{ selecionada.id }}/linhas/remover"
-                  hx-post="/orcamento/{{ selecionada.id }}/linhas/remover" hx-target="#pdd" hx-swap="outerHTML">
+                  hx-post="/orcamento/{{ selecionada.id }}/linhas/remover" hx-target="#pdd" hx-swap="outerHTML" hx-confirm="{{ t('confirmar.remover_linha') }}">
               <input type="hidden" name="csrf" value="{{ csrf }}">
               <input type="hidden" name="iniciativa_id" value="{{ l.iniciativa_id }}">
               <input type="hidden" name="tipo" value="{{ l.tipo }}">
