@@ -38,7 +38,7 @@ Sem `FINANCEIRO_SEGREDO` o app sobe e as sessões caem a cada reinício.
 
    ```bash
    lxc exec financial-control-prd --cwd /opt/app -- \
-     docker compose exec app python -m financeiro criar-admin \
+     docker compose exec app /app/.venv/bin/python -m financeiro criar-admin \
        --email <e-mail> --nome "<nome>" --bd "<nome do BD>"
    ```
 
@@ -46,13 +46,17 @@ Sem `FINANCEIRO_SEGREDO` o app sobe e as sessões caem a cada reinício.
 6. **Backup**: o SQLite é copiado com `.backup`, não copiando o arquivo com o app escrevendo:
 
    ```bash
-   docker compose exec app python -m financeiro backup --destino /data/backup/AAAA-MM-DD.db
+   docker compose exec app mkdir -p /data/backup
+   docker compose exec app /app/.venv/bin/python -m financeiro backup --destino /data/backup/AAAA-MM-DD.db
    ```
 
    O comando não sobrescreve arquivo existente. A estratégia no inventário do host precisa incluir
    o volume do LXC.
 7. **nginx e TLS** (segunda etapa, no `lab`): vhost, certificado do `certbot` e, se for o caso, a
    exposição na internet.
+
+> No contêiner, os comandos do app usam `/app/.venv/bin/python`: o `python` do sistema não tem as
+> dependências (FastAPI etc.). Foi o que a verificação da 0.1.0 mostrou.
 
 ## Verificação pós-deploy
 
