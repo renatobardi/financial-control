@@ -10,6 +10,17 @@ class AdministracaoInvalida(Exception):
     """A operação foi recusada; a mensagem vai para o terminal."""
 
 
+class NomeDeBdInvalido(Exception):
+    """O nome do BD está vazio ou passa do limite."""
+
+
+class NomeDeBdRepetido(Exception):
+    """Já existe um BD com esse nome."""
+
+
+NOME_BD_MAXIMO = 60
+
+
 def _validar(email: str, nome: str, bd_nome: str, senha: str | None) -> None:
     if "@" not in email or not nome.strip() or not bd_nome.strip():
         raise AdministracaoInvalida("Informe e-mail válido, nome e BD.")
@@ -43,6 +54,18 @@ def criar_admin(conexao: Conexao, email: str, nome: str, bd_nome: str, senha: st
     if acesso.papel_do(conexao, bd_id, usuario_id) != "Admin":
         acesso.convidar(conexao, bd_id, email.strip(), "Admin")
     return situacao
+
+
+def criar_bd_do_usuario(conexao: Conexao, usuario_id: int, nome: str) -> int:
+    """Cria um BD e faz do usuário o Admin dele. A sigla são as duas primeiras letras do nome."""
+    nome = nome.strip()
+    if not nome or len(nome) > NOME_BD_MAXIMO:
+        raise NomeDeBdInvalido(nome)
+    if acesso.achar_bd_por_nome(conexao, nome) is not None:
+        raise NomeDeBdRepetido(nome)
+    bd_id = acesso.criar_bd(conexao, nome, nome[:2].upper())
+    acesso.adicionar_membro(conexao, bd_id, usuario_id, "Admin")
+    return bd_id
 
 
 def semear(conexao: Conexao, senha: str | None) -> None:

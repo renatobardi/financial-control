@@ -30,6 +30,16 @@
       <p class="text-muted-foreground">{{ t("bds.sem_acesso_sub", email=usuario.email) }}</p>
     </header>
     {% endif %}
+    <form method="post" action="/bds" class="flex flex-col gap-2 border-t border-border pt-4">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label class="flex flex-col gap-1.5 font-medium" for="novo-bd">{{ t("bds.criar_titulo") }}
+        <input id="novo-bd" name="nome" type="text" required maxlength="60" value="{{ nome }}"
+               aria-label="{{ t('bds.criar_nome') }}" placeholder="{{ t('bds.criar_nome') }}"
+               class="h-9 rounded-4xl border border-input bg-background px-3.5 font-normal">
+      </label>
+      {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+      <button type="submit" class="self-start rounded-4xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">{{ t("bds.criar_botao") }}</button>
+    </form>
     <form method="post" action="/sair">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       <button type="submit" class="text-muted-foreground underline">{{ t("auth.sair") }}</button>

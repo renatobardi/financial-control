@@ -52,6 +52,11 @@ sub = "{nome}, você tem acesso a {n} business domains. Os dados de cada um fica
 sem_acesso = "Você ainda não tem acesso a nenhum BD."
 sem_acesso_sub = "Sua conta ({email}) foi criada, mas ainda não está vinculada a um business domain. Peça acesso ao admin do seu BD."
 nao_e_membro = "Você não faz parte deste BD."
+criar_titulo = "Criar novo BD"
+criar_nome = "Nome do BD"
+criar_botao = "Criar BD"
+nome_invalido = "Informe o nome do BD (até 60 caracteres)."
+nome_repetido = "Já existe um BD com esse nome. Escolha outro."
 
 [inicio]
 titulo = "Controle financeiro"

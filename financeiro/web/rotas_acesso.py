@@ -3,7 +3,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from financeiro import autenticacao, cenarios, onboarding, orcamento, store
+from financeiro import administracao, autenticacao, cenarios, onboarding, orcamento, store
 from financeiro import senha as senhas
 from financeiro.i18n import t
 from financeiro.store import acesso
@@ -253,17 +253,48 @@ def inicio(
     )
 
 
-@roteador.get("/bds")
-def escolher_bd(
-    contexto: Contexto = Depends(exigir_sessao), conexao: store.Conexao = Depends(conexao_db)
+def _pagina_bds(
+    contexto: Contexto,
+    conexao: store.Conexao,
+    *,
+    status: int = 200,
+    erro: str | None = None,
+    nome: str = "",
 ):
     return renderizar(
         "bds.html",
+        status,
         usuario=contexto.usuario,
         tema=_tema(contexto),
         csrf=contexto.csrf,
         bds=acesso.bds_do_usuario(conexao, contexto.usuario.id),
+        erro=erro,
+        nome=nome,
     )
+
+
+@roteador.get("/bds")
+def escolher_bd(
+    contexto: Contexto = Depends(exigir_sessao), conexao: store.Conexao = Depends(conexao_db)
+):
+    return _pagina_bds(contexto, conexao)
+
+
+@roteador.post("/bds")
+def criar_bd(
+    nome: str = Form(""),
+    contexto: Contexto = Depends(exigir_csrf),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    """Qualquer usuário logado cria um BD, vira Admin dele e passa a usá-lo."""
+    try:
+        bd_id = administracao.criar_bd_do_usuario(conexao, contexto.usuario.id, nome)
+    except administracao.NomeDeBdInvalido:
+        return _pagina_bds(contexto, conexao, status=400, erro=t("bds.nome_invalido"), nome=nome)
+    except administracao.NomeDeBdRepetido:
+        return _pagina_bds(contexto, conexao, status=409, erro=t("bds.nome_repetido"), nome=nome)
+    autenticacao.escolher_bd(conexao, contexto.token, bd_id)
+    return RedirectResponse("/", status_code=303)
 
 
 @roteador.post("/bds/{bd_id}")
