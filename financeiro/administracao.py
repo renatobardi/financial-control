@@ -1,13 +1,34 @@
 """Implantação: primeiro Admin e dados de exemplo. Sem SQL: usa o store."""
 
+import unicodedata
+
 from financeiro import senha as senhas
-from financeiro.store import Conexao, acesso, cadastros, organizacao, pessoas, portfolio
+from financeiro.store import (
+    Conexao,
+    ErroDeIntegridade,
+    acesso,
+    cadastros,
+    organizacao,
+    pessoas,
+    portfolio,
+)
 
 SENHA_MINIMA = 8
 
 
 class AdministracaoInvalida(Exception):
     """A operação foi recusada; a mensagem vai para o terminal."""
+
+
+class NomeDeBdInvalido(Exception):
+    """O nome do BD está vazio ou passa do limite."""
+
+
+class NomeDeBdRepetido(Exception):
+    """Já existe um BD com esse nome."""
+
+
+NOME_BD_MAXIMO = 60
 
 
 def _validar(email: str, nome: str, bd_nome: str, senha: str | None) -> None:
@@ -43,6 +64,30 @@ def criar_admin(conexao: Conexao, email: str, nome: str, bd_nome: str, senha: st
     if acesso.papel_do(conexao, bd_id, usuario_id) != "Admin":
         acesso.convidar(conexao, bd_id, email.strip(), "Admin")
     return situacao
+
+
+def _tem_caractere_invisivel(nome: str) -> bool:
+    """Controle, formato (espaço de largura zero) e afins: o nome ficaria invisível ou enganoso."""
+    return any(unicodedata.category(c).startswith("C") for c in nome)
+
+
+def criar_bd_do_usuario(conexao: Conexao, usuario_id: int, nome: str) -> int:
+    """Cria um BD e faz do usuário o Admin dele. A sigla são as duas primeiras letras do nome."""
+    nome = nome.strip()
+    if not nome or len(nome) > NOME_BD_MAXIMO or _tem_caractere_invisivel(nome):
+        raise NomeDeBdInvalido(nome)
+    if acesso.achar_bd_por_nome(conexao, nome) is not None:
+        raise NomeDeBdRepetido(nome)
+    try:  # o BD e o vínculo de Admin nascem juntos: se um falha, nenhum fica
+        bd_id = acesso.criar_bd(conexao, nome, nome[:2].upper(), confirmar=False)
+        acesso.adicionar_membro(conexao, bd_id, usuario_id, "Admin", confirmar=False)
+    except ErroDeIntegridade as erro:
+        conexao.rollback()
+        if "bd.nome" in str(erro):  # outra criação chegou entre a checagem e o INSERT
+            raise NomeDeBdRepetido(nome) from erro
+        raise
+    conexao.commit()
+    return bd_id
 
 
 def semear(conexao: Conexao, senha: str | None) -> None:

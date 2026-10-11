@@ -30,9 +30,11 @@ class Membro(NamedTuple):
     pendente: bool
 
 
-def criar_bd(conexao: sqlite3.Connection, nome: str, sigla: str) -> int:
+def criar_bd(conexao: sqlite3.Connection, nome: str, sigla: str, *, confirmar: bool = True) -> int:
+    """`confirmar=False` deixa a transação aberta, para quem agrupa com outros passos."""
     cursor = conexao.execute("INSERT INTO bd (nome, sigla) VALUES (?, ?)", (nome, sigla))
-    conexao.commit()
+    if confirmar:
+        conexao.commit()
     return cursor.lastrowid
 
 
@@ -69,12 +71,15 @@ def nome_do_bd(conexao: sqlite3.Connection, bd_id: int) -> str | None:
     return linha[0] if linha else None
 
 
-def adicionar_membro(conexao: sqlite3.Connection, bd_id: int, usuario_id: int, papel: str) -> None:
+def adicionar_membro(
+    conexao: sqlite3.Connection, bd_id: int, usuario_id: int, papel: str, *, confirmar: bool = True
+) -> None:
     conexao.execute(
         "INSERT INTO membro (bd_id, usuario_id, papel) VALUES (?, ?, ?)",
         (bd_id, usuario_id, papel),
     )
-    conexao.commit()
+    if confirmar:
+        conexao.commit()
 
 
 def papel_do(conexao: sqlite3.Connection, bd_id: int, usuario_id: int) -> str | None:
