@@ -37,9 +37,9 @@
       <p class="mt-1 text-muted-foreground">{{ t("onboarding.descricao_" ~ p.chave) }}</p>
 
       {% if p.estado == "bloqueado" %}
-      <p class="mt-2 text-sm">{{ t("onboarding.bloqueado_por") }}
-        {% for b in p.bloqueado_por %}<strong>{{ t("onboarding.passo_" ~ b) }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}
-      </p>
+      {% set faltam = [] %}
+      {% for b in p.bloqueado_por %}{% set _ = faltam.append(t("onboarding.passo_" ~ b)) %}{% endfor %}
+      <p class="mt-2 text-sm">{{ t("onboarding.bloqueado_por", passos=faltam|join(", ")) }}</p>
       {% endif %}
       {% if p.chave == "pessoas" and p.estado != "bloqueado" and not tarifas_feitas %}
       <p class="mt-2 text-sm text-muted-foreground">{{ t("onboarding.aviso_sem_tarifa") }}</p>
@@ -48,10 +48,10 @@
       <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
         {% if p.estado != "bloqueado" %}
           {% for rotulo, url in telas[p.chave] %}
-          <a class="underline" href="{{ url }}">{{ t("onboarding.cadastrar") }}: {{ t("onboarding.link_" ~ rotulo) }}</a>
+          <a class="underline" href="{{ url }}">{{ t("onboarding.cadastrar", destino=t("onboarding.link_" ~ rotulo)) }}</a>
           {% endfor %}
           {% if p.chave in layouts %}
-          <a class="underline" href="/cargas">{{ t("onboarding.importar") }}: {{ t("cargas.layout_" ~ layouts[p.chave]) }}</a>
+          <a class="underline" href="/cargas">{{ t("onboarding.importar", layout=t("cargas.layout_" ~ layouts[p.chave])) }}</a>
           <a class="underline" href="/cargas/modelo/{{ layouts[p.chave] }}.csv">{{ t("onboarding.modelo") }}</a>
           {% endif %}
         {% endif %}

@@ -4,7 +4,8 @@ import pytest
 
 from financeiro import onboarding, organizacao, store
 from financeiro.cargas import motor
-from financeiro.store import acesso, cadastros, pessoas, portfolio
+from financeiro.store import acesso, cadastros, portfolio
+from tests.ajuda import cadastrar_ate_pessoa
 
 ORDEM = (
     "organizacao",
@@ -19,13 +20,6 @@ ORDEM = (
     "compras",
     "calendario",
 )
-
-
-@pytest.fixture
-def conexao():
-    c = store.abrir(":memory:")
-    store.migrar(c, store.PASTA_MIGRACOES)
-    return c
 
 
 @pytest.fixture
@@ -57,19 +51,6 @@ def test_bd_vazio_lista_os_onze_passos_na_ordem_com_dependentes_bloqueados(conex
 
 def _estados(conexao, bd_id):
     return {chave: p.estado for chave, p in _por_chave(conexao, bd_id).items()}
-
-
-def _cadastrar_cadeia_ate_pessoa(conexao, bd):
-    tribo = organizacao.criar_tribo(conexao, bd, "Tribo", "G", "2026-01")
-    squad = organizacao.criar_squad(conexao, bd, "Squad", tribo, "G", "2026-01")
-    ini = portfolio.criar_iniciativa(conexao, bd, "I-01", "Iniciativa")
-    dem = portfolio.criar_demanda(conexao, bd, "D-01", ini, "Demanda", "OPEX", squad)
-    agrup = portfolio.criar_agrupamento(conexao, bd, "RTB")
-    tema = portfolio.criar_tema(conexao, bd, "T-01", dem, "Tema", agrup)
-    empresa = cadastros.criar_empresa(conexao, bd, "Própria", "propria")
-    cargo = cadastros.criar_cargo(conexao, bd, empresa, "Pleno", "N8")
-    pessoas.criar_pessoa(conexao, bd, "F1", "Ana", squad, cargo, tema, "2026-01", None)
-    return cargo
 
 
 def test_cadastrar_na_ordem_destrava_cada_passo(conexao, bd):
@@ -104,7 +85,7 @@ def test_cadastrar_na_ordem_destrava_cada_passo(conexao, bd):
 
 
 def test_tarifas_so_ficam_feitas_com_tarifa_e_markup(conexao, bd):
-    cargo = _cadastrar_cadeia_ate_pessoa(conexao, bd)
+    cargo = cadastrar_ate_pessoa(conexao, bd)
 
     cadastros.definir_tarifa(conexao, bd, cargo, 12000, "2026-01")
     assert _estados(conexao, bd)["tarifas"] == "pendente"
@@ -114,7 +95,7 @@ def test_tarifas_so_ficam_feitas_com_tarifa_e_markup(conexao, bd):
 
 
 def test_pessoas_nao_esperam_pelas_tarifas(conexao, bd):
-    _cadastrar_cadeia_ate_pessoa(conexao, bd)
+    cadastrar_ate_pessoa(conexao, bd)
 
     estados = _estados(conexao, bd)
 
@@ -124,7 +105,7 @@ def test_pessoas_nao_esperam_pelas_tarifas(conexao, bd):
 
 def test_contagem_do_passo_e_isolada_por_bd(conexao, bd):
     outro = acesso.criar_bd(conexao, "Outro", "OU")
-    _cadastrar_cadeia_ate_pessoa(conexao, outro)
+    cadastrar_ate_pessoa(conexao, outro)
     portfolio.criar_iniciativa(conexao, bd, "I-01", "Iniciativa")
 
     por_chave = _por_chave(conexao, bd)
@@ -135,7 +116,7 @@ def test_contagem_do_passo_e_isolada_por_bd(conexao, bd):
 
 
 def test_pronto_so_com_os_oito_obrigatorios_feitos(conexao, bd):
-    cargo = _cadastrar_cadeia_ate_pessoa(conexao, bd)
+    cargo = cadastrar_ate_pessoa(conexao, bd)
     assert onboarding.situacao(conexao, bd).pronto is False  # faltam tarifa e markup
 
     cadastros.definir_tarifa(conexao, bd, cargo, 12000, "2026-01")
@@ -147,7 +128,7 @@ def test_pronto_so_com_os_oito_obrigatorios_feitos(conexao, bd):
 
 
 def test_apagar_o_unico_squad_volta_a_nao_pronto(conexao, bd):
-    cargo = _cadastrar_cadeia_ate_pessoa(conexao, bd)
+    cargo = cadastrar_ate_pessoa(conexao, bd)
     cadastros.definir_tarifa(conexao, bd, cargo, 12000, "2026-01")
     cadastros.definir_markup(conexao, bd, 1050, "2026-01")
     assert onboarding.situacao(conexao, bd).pronto is True
