@@ -484,7 +484,16 @@ def _montar_base(conexao: Conexao, bd_id: int, aba: str, ano: int, mes_atual: st
         tribos = [o for o in orgs if o.tipo == "Tribo"]
         squads = [o for o in orgs if o.tipo == "Squad"]
         linhas = []
-        for o in sorted(orgs, key=lambda x: (x.tipo != "Tribo", x.id)):
+        # árvore: cada tribo seguida dos seus squads; squad sem tribo vai ao fim
+        ordem = {t.id: n for n, t in enumerate(sorted(tribos, key=lambda x: x.id))}
+        for o in sorted(
+            orgs,
+            key=lambda x: (
+                ordem.get(x.id if x.tipo == "Tribo" else x.pai_id, len(ordem)),
+                x.tipo != "Tribo",
+                x.id,
+            ),
+        ):
             historico = " · ".join(
                 f"{em}: {txt}" for em, txt in arvore_org.historico(conexao, bd_id, o.id)
             )
@@ -886,7 +895,7 @@ def _filtrar(conteudo: Aba, aba: str, filtro: str, conexao: Conexao, bd_id: int)
     s = i18n.t
     todos = ("", s("cadastros.filtro_todos"))
     if aba == "organizacao":
-        conteudo.filtros = [todos, ("Tribo", "Tribo"), ("Squad", "Squad")]
+        conteudo.filtros = [todos, ("BD", "BD"), ("Tribo", "Tribo"), ("Squad", "Squad")]
         indice, alvo = 0, filtro
     elif aba == "demandas":
         conteudo.filtros = [todos, *[(t, t) for t in TIPOS_DEMANDA]]
@@ -1023,6 +1032,33 @@ def _indicadores(
         _acrescentar(conteudo, ["inicio_cenario"], extras)
 
 
+def _linha_bd(
+    conteudo: Aba,
+    conexao: Conexao,
+    bd_id: int,
+    bd_nome: str,
+    ano: int,
+    agora: datetime,
+    formato: str,
+) -> None:
+    """Raiz da árvore: o BD, com o total de pessoas ativas e de custo do ano."""
+    mes = agora.strftime("%Y-%m")
+    pessoas_mes = equipe.listar(conexao, bd_id, mes, mes, agora)
+    tabela = realizado.consultar(conexao, bd_id, ano, "tribo", "todas", "bruto", agora)
+    custo_total = sum(linha.total_ano for linha in tabela.linhas)
+    celulas = [
+        "BD",
+        bd_nome,
+        "—",
+        "—",
+        "—",
+        "—",
+        len(pessoas_mes),
+        valor_html(custo_total, formato),
+    ]
+    conteudo.linhas.insert(0, (None, celulas, "", set()))
+
+
 def _historico_recolhido(conteudo: Aba) -> None:
     """Na organização, o histórico de vigências vira um bloco recolhido."""
     titulo = i18n.t("cadastros.historico_vigencias")
@@ -1068,11 +1104,14 @@ def montar(
     filtro: str = "",
     agora: datetime | None = None,
     formato: str = "mil",
+    bd_nome: str = "",
 ) -> Aba:
     """A aba com os formulários de edição, os chips de filtro e os indicadores por item."""
     agora = agora or datetime.now()
     conteudo = _montar_base(conexao, bd_id, aba, ano, mes_atual)
     _indicadores(conteudo, aba, conexao, bd_id, ano, agora, formato)
+    if aba == "organizacao" and bd_nome:
+        _linha_bd(conteudo, conexao, bd_id, bd_nome, ano, agora, formato)
     _filtrar(conteudo, aba, filtro, conexao, bd_id)
     if aba == "organizacao":
         _historico_recolhido(conteudo)

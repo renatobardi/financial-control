@@ -88,7 +88,7 @@
       <tbody>
         {% for registro_id, celulas, texto, permitidas in linhas %}
         <tr class="border-t border-border">
-          {% for celula in celulas %}<td class="px-3 py-2">{{ celula }}</td>{% endfor %}
+          {% for celula in celulas %}<td class="px-3 py-2{{ ' pl-8' if aba == 'organizacao' and celulas[0] == 'Squad' and loop.index == 2 }}{{ ' font-semibold' if aba == 'organizacao' and celulas[0] == 'BD' }}"{% if aba == 'organizacao' and loop.index == 2 %} data-nivel="{{ celulas[0] }}"{% endif %}>{{ celula }}</td>{% endfor %}
           {% if pode_editar and conteudo.acoes_linha %}
           <td class="px-3 py-2">
             {% for a in conteudo.acoes_linha if permitidas is none or a.acao in permitidas %}

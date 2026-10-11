@@ -45,6 +45,7 @@ def _fragmento(
         filtro,
         request.app.state.agora(),
         contexto.usuario.formato_valor,
+        contexto.bd_nome or "",
     )
     if conteudo.paginada:
         linhas, pagina, total = abas.paginar(conteudo.linhas, pagina, q)
