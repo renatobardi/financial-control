@@ -50,9 +50,17 @@ def entrar(
     conexao: store.Conexao = Depends(conexao_db),
 ):
     app = request.app
+    # o nginx do host sempre sobrescreve X-Real-IP com o IP de origem
+    origem = request.headers.get("x-real-ip") or (request.client.host if request.client else None)
     try:
         token, sessao = autenticacao.entrar(
-            conexao, email, senha, app.state.agora(), app.state.cfg.max_tentativas
+            conexao,
+            email,
+            senha,
+            app.state.agora(),
+            app.state.cfg.max_tentativas,
+            agente=request.headers.get("user-agent"),
+            ip=origem,
         )
     except autenticacao.CredenciaisInvalidas:
         return renderizar(

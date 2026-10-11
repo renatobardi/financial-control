@@ -53,6 +53,8 @@ def entrar(
     senha_digitada: str,
     agora: datetime,
     max_tentativas: int = MAX_TENTATIVAS,
+    agente: str | None = None,
+    ip: str | None = None,
 ) -> tuple[str, Sessao]:
     """Valida as credenciais e abre a sessão. Devolve o token (vai assinado no cookie)."""
     email = email.strip()
@@ -69,7 +71,14 @@ def entrar(
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(24)
     sessao.criar(
-        conexao, hash_token(token), usuario.id, csrf, _iso(agora), _iso(agora + DURACAO_SESSAO)
+        conexao,
+        hash_token(token),
+        usuario.id,
+        csrf,
+        _iso(agora),
+        _iso(agora + DURACAO_SESSAO),
+        (agente or "")[:200] or None,
+        (ip or "")[:64] or None,
     )
     return token, Sessao(usuario.id, None, csrf)
 
@@ -84,3 +93,15 @@ def escolher_bd(conexao: Conexao, token: str, bd_id: int | None) -> None:
 
 def sair(conexao: Conexao, token: str) -> None:
     sessao.apagar(conexao, hash_token(token))
+
+
+def sessoes_abertas(conexao: Conexao, usuario_id: int, agora: datetime) -> list[sessao.Aberta]:
+    return sessao.abertas_do_usuario(conexao, usuario_id, _iso(agora))
+
+
+def encerrar_sessao(conexao: Conexao, usuario_id: int, sessao_id: int) -> bool:
+    return sessao.apagar_do_usuario(conexao, usuario_id, sessao_id)
+
+
+def encerrar_outras(conexao: Conexao, usuario_id: int, token: str) -> int:
+    return sessao.apagar_outras(conexao, usuario_id, hash_token(token))
