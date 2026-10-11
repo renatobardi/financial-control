@@ -65,3 +65,22 @@ def test_base_de_valor_so_aparece_nas_telas_que_a_usam(ambiente):
 
     assert 'href="?base=liquido"' in ambiente.cliente.get("/realizado").text
     assert 'href="?base=liquido"' not in ambiente.cliente.get("/cargas").text
+
+
+def test_o_bloco_do_usuario_abre_configuracoes_e_o_sair_fica_no_menu_lateral(ambiente):
+    semear(ambiente, bds=(("Mobility", "Editor"),))
+    entrar(ambiente)
+
+    html = ambiente.cliente.get("/orcamento").text
+    menu = html[html.index('id="menu-lateral"') : html.index("</aside>")]
+    cabecalho = html[html.index("<header") : html.index("</header>")]
+
+    assert menu.count('href="/configuracoes"') == 1
+    bloco = menu[
+        menu.index('href="/configuracoes"') : menu.index(
+            "</a>", menu.index('href="/configuracoes"')
+        )
+    ]
+    assert "Ana" in bloco and "ana@empresa.com" in bloco
+    assert 'action="/sair"' in menu
+    assert 'action="/sair"' not in cabecalho

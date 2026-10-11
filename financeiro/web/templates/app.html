@@ -12,7 +12,6 @@
   {% elif nome == "blocks" %}<rect width="7" height="7" x="14" y="3" rx="1"/><path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3"/>
   {% elif nome == "arrow-up" %}<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>
   {% elif nome == "shield" %}<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
-  {% elif nome == "settings" %}<circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8 7 17M17 7l2.8-2.8"/>
   {% elif nome == "panel-left" %}<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>
   {% elif nome == "log-out" %}<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
   {% endif %}
@@ -52,12 +51,18 @@
         {{ item("fechamento", "/fechamento", "fechamento_tela.titulo", "shield") }}
       </div>
     </nav>
-    <div class="flex flex-col gap-1 border-t border-sidebar-border pt-3">
-      {{ item("configuracoes", "/configuracoes", "configuracoes.titulo", "settings") }}
-      <div class="px-3 py-1">
+    <div class="flex items-center gap-1 border-t border-sidebar-border pt-3">
+      <a href="/configuracoes" {{ 'aria-current=page' if tela == "configuracoes" }}
+         title="{{ t('configuracoes.titulo') }}" aria-label="{{ t('configuracoes.titulo') }}"
+         class="min-w-0 grow rounded-xl px-3 py-1 {{ 'bg-sidebar-accent text-sidebar-accent-foreground' if tela == "configuracoes" else 'text-sidebar-foreground hover:bg-sidebar-accent' }}">
         <div class="truncate font-medium">{{ usuario.nome }}</div>
         <div class="truncate text-xs text-muted-foreground">{{ usuario.email }}</div>
-      </div>
+      </a>
+      <form method="post" action="/sair">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button type="submit" aria-label="{{ t('casca.sair') }}" title="{{ t('casca.sair') }}"
+                class="flex size-8 items-center justify-center rounded-4xl hover:bg-sidebar-accent">{{ icone("log-out") }}</button>
+      </form>
     </div>
   </aside>
 
@@ -85,11 +90,6 @@
         <a href="?base=liquido" class="rounded-4xl px-2.5 py-1 {{ 'bg-primary text-primary-foreground' if base == 'liquido' }}">{{ t("realizado.base_liquido") }}</a>
       </span>
       {% endif %}
-      <form method="post" action="/sair">
-        <input type="hidden" name="csrf" value="{{ csrf }}">
-        <button type="submit" aria-label="{{ t('casca.sair') }}" title="{{ t('casca.sair') }}"
-                class="flex size-8 items-center justify-center rounded-4xl hover:bg-muted">{{ icone("log-out") }}</button>
-      </form>
     </header>
     <main class="flex flex-col gap-6 p-6">
       {% block conteudo %}{% endblock %}
