@@ -331,6 +331,17 @@ def _tarifa(conexao, bd_id, dados, mes_atual):
     return "cadastros.ok_tarifa"
 
 
+def _corrigir_tarifa(conexao, bd_id, dados, mes_atual):
+    try:
+        valor = i18n.ler_moeda(_texto(dados, "valor"))
+    except ValueError as erro:
+        raise ErroCadastro("cadastros.erro_valor") from erro
+    cargo = _inteiro(dados, "cargo_id")
+    if not cadastros.corrigir_tarifa_vigente(conexao, bd_id, cargo, valor):
+        raise ErroCadastro("cadastros.erro_sem_tarifa", 409)
+    return "cadastros.ok_tarifa_corrigida"
+
+
 def _fornecedor(conexao, bd_id, dados, mes_atual):
     _guardar(lambda: portfolio.criar_fornecedor(conexao, bd_id, _texto(dados, "nome")))
     return "cadastros.ok_salvo"
@@ -436,6 +447,7 @@ ACOES: dict[tuple[str, str], Callable[..., str]] = {
     ("cargos", "renomear"): _renomear("cargo"),
     ("cargos", "editar"): _definir("cargo", "nivel", "nivel", NIVEIS),
     ("cargos", "tarifa"): _tarifa,
+    ("cargos", "tarifa_editar"): _corrigir_tarifa,
     ("fornecedores", "nova"): _fornecedor,
     ("fornecedores", "renomear"): _renomear("fornecedor"),
     ("vagas", "nova"): _vaga,
@@ -1091,6 +1103,13 @@ def montar(
             Campo("valor", "cadastros.c_tarifa_inicial", "valor", opcional=True),
             Campo("a_partir_de", "cadastros.c_a_partir_de", "mes", opcional=True),
         ]
+        conteudo.formularios.append(
+            Formulario(
+                "tarifa_editar", "cadastros.f_corrigir_tarifa",
+                [Campo("cargo_id", "cadastros.c_cargo", "selecao", ops),
+                 Campo("valor", "cadastros.c_tarifa_liquida", "valor")],
+            )
+        )  # fmt: skip
         conteudo.formularios.append(
             Formulario(
                 "editar", "cadastros.f_editar_cargo",

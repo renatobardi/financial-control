@@ -121,6 +121,19 @@ def definir_tarifa(
     return cursor.lastrowid
 
 
+def corrigir_tarifa_vigente(
+    conexao: sqlite3.Connection, bd_id: int, cargo_id: int, liquida_centavos: int
+) -> bool:
+    """Troca o valor da tarifa de vigência aberta do cargo. False se o cargo não tem uma."""
+    cursor = conexao.execute(
+        "UPDATE tarifa SET liquida_centavos = ?"
+        " WHERE bd_id = ? AND cargo_id = ? AND vigencia_fim IS NULL",
+        (liquida_centavos, bd_id, cargo_id),
+    )
+    conexao.commit()
+    return cursor.rowcount > 0
+
+
 def tarifa_vigente(
     conexao: sqlite3.Connection, bd_id: int, cargo_id: int, mes: str
 ) -> Tarifa | None:
