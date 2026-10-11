@@ -17,6 +17,9 @@ ENTRE_BDS_PERMITIDAS = {
     "financeiro.store.acesso.bds_do_usuario",
     "financeiro.store.acesso.bds_sem_vinculo",
     "financeiro.store.acesso.pedidos_do_usuario",
+    # Excluir a conta e saber onde o usuário é o único Admin atuam sobre o usuário, em todos os BDs.
+    "financeiro.store.acesso.excluir_conta",
+    "financeiro.store.acesso.bds_em_que_e_ultimo_admin",
 }
 PASTA_MIGRACOES = Path(store.__file__).parent / "migracoes"
 

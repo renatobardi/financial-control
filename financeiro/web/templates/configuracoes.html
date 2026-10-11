@@ -20,6 +20,14 @@
   {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
   {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
 
+  <nav class="flex flex-wrap gap-2" aria-label="{{ t('configuracoes.titulo') }}">
+    {% for a in abas %}
+    <a href="/configuracoes?aba={{ a }}" data-aba="{{ a }}" {{ 'data-ativa=true' if a == aba }}
+       class="rounded-4xl border border-border px-3.5 py-1.5 {{ 'bg-primary text-primary-foreground' if a == aba else 'bg-card' }}">{{ t("configuracoes.aba_" ~ a) }}</a>
+    {% endfor %}
+  </nav>
+
+  {% if aba == "perfil" %}
   {% call card("configuracoes.perfil") %}
     <p class="mb-3 text-muted-foreground">{{ t("configuracoes.perfil_sub") }}</p>
     <form method="post" action="/configuracoes/perfil" class="flex flex-col gap-3">
@@ -61,13 +69,32 @@
     </form>
   {% endcall %}
 
+  {% endif %}
+
+  {% if aba == "bds" %}
   {% call card("configuracoes.meus_bds") %}
     <p class="mb-3 text-muted-foreground">{{ t("configuracoes.meus_bds_sub") }}</p>
     <ul class="mb-3 flex flex-col gap-2">
       {% for b in meus_bds %}
       <li class="flex items-center justify-between rounded-xl border border-border p-3">
         <span class="font-semibold">{{ b.nome }}</span>
-        {{ badge("papel." ~ (b.papel|lower)) }}
+        <span class="flex flex-wrap items-center gap-2">
+          {{ badge("papel." ~ (b.papel|lower)) }}
+          {% if usuario.bd_padrao_id == b.id %}{{ badge("configuracoes.bd_e_padrao") }}
+          {% else %}
+          <form method="post" action="/configuracoes/bds/{{ b.id }}/padrao">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            {{ botao("configuracoes.bd_tornar_padrao", tipo="submit", tom="secundario") }}
+          </form>
+          {% endif %}
+          {% if b.id in ultimo_admin_em %}<span class="text-xs text-muted-foreground">{{ t("configuracoes.bd_ultimo_admin") }}</span>
+          {% else %}
+          <form method="post" action="/configuracoes/bds/{{ b.id }}/sair" hx-confirm="{{ t('confirmar.sair_do_bd') }}">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            {{ botao("configuracoes.bd_sair", tipo="submit", tom="secundario") }}
+          </form>
+          {% endif %}
+        </span>
       </li>
       {% endfor %}
     </ul>
@@ -95,7 +122,9 @@
     {% endif %}
   {% endcall %}
 
-  {% if eh_admin %}
+  {% endif %}
+
+  {% if aba == "membros" and eh_admin %}
   {% call card("configuracoes.admin_titulo") %}
     <p class="mb-3 text-muted-foreground">{{ t("configuracoes.admin_sub") }}</p>
     <h3 class="mb-2 font-semibold">{{ t("configuracoes.convidar") }}</h3>
@@ -108,27 +137,44 @@
       {{ botao("configuracoes.convite_enviar", tipo="submit") }}
     </form>
     <h3 class="mb-2 font-semibold">{{ t("configuracoes.membros") }}</h3>
-    <ul class="mb-4 flex flex-col gap-2">
-      {% for m in membros %}
-      <li class="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3">
-        <span class="grow"><span class="font-semibold">{{ m.nome }}</span>
-          <span class="text-muted-foreground">{{ m.email }}</span>
-          {{ badge("configuracoes.membro_pendente" if m.pendente else "configuracoes.membro_ativo") }}</span>
-        <form method="post" action="/configuracoes/membros/{{ m.usuario_id }}/papel" class="flex items-center gap-2">
-          <input type="hidden" name="csrf" value="{{ csrf }}">
-          <select name="papel" aria-label="{{ t('configuracoes.membro_papel') }}"
-                  class="h-8 rounded-4xl border border-input bg-background px-2">
-            {% for p in papeis %}<option value="{{ p }}" {{ "selected" if m.papel == p }}>{{ t("papel." ~ (p|lower)) }}</option>{% endfor %}
-          </select>
-          {{ botao("configuracoes.membro_alterar", tipo="submit", tom="secundario") }}
-        </form>
-        <form method="post" action="/configuracoes/membros/{{ m.usuario_id }}/remover" hx-confirm="{{ t('confirmar.remover_membro') }}">
-          <input type="hidden" name="csrf" value="{{ csrf }}">
-          {{ botao("configuracoes.membro_remover", tipo="submit", tom="secundario") }}
-        </form>
-      </li>
-      {% endfor %}
-    </ul>
+    <div class="mb-4 overflow-x-auto rounded-2xl ring-1 ring-border">
+      <table class="w-full text-left">
+        <thead class="bg-muted text-muted-foreground">
+          <tr>
+            <th class="px-3 py-2 font-medium">{{ t("configuracoes.membro_nome") }}</th>
+            <th class="px-3 py-2 font-medium">{{ t("configuracoes.membro_email") }}</th>
+            <th class="px-3 py-2 font-medium">{{ t("configuracoes.membro_estado") }}</th>
+            <th class="px-3 py-2 font-medium">{{ t("configuracoes.membro_papel") }}</th>
+            <th class="px-3 py-2"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in membros %}
+          <tr class="border-t border-border">
+            <td class="px-3 py-2 font-semibold">{{ m.nome }}</td>
+            <td class="px-3 py-2 text-muted-foreground">{{ m.email }}</td>
+            <td class="px-3 py-2">{{ badge("configuracoes.membro_pendente" if m.pendente else "configuracoes.membro_ativo") }}</td>
+            <td class="px-3 py-2">
+              <form method="post" action="/configuracoes/membros/{{ m.usuario_id }}/papel">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <select name="papel" aria-label="{{ t('configuracoes.membro_papel') }}" onchange="this.form.requestSubmit()"
+                        class="h-8 rounded-4xl border border-input bg-background px-2">
+                  {% for p in papeis %}<option value="{{ p }}" {{ "selected" if m.papel == p }}>{{ t("papel." ~ (p|lower)) }}</option>{% endfor %}
+                </select>
+                <noscript>{{ botao("configuracoes.membro_alterar", tipo="submit", tom="secundario") }}</noscript>
+              </form>
+            </td>
+            <td class="px-3 py-2 text-right">
+              <form method="post" action="/configuracoes/membros/{{ m.usuario_id }}/remover" hx-confirm="{{ t('confirmar.remover_membro') }}">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                {{ botao("configuracoes.membro_remover", tipo="submit", tom="secundario") }}
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     <h3 class="mb-2 font-semibold">{{ t("configuracoes.pedidos_abertos") }}</h3>
     {% for p in pedidos_abertos %}
     <div class="mb-2 flex flex-wrap items-center gap-3 rounded-xl border border-border p-3">
@@ -149,6 +195,21 @@
     {% else %}
     <p class="text-muted-foreground">{{ t("configuracoes.pedidos_nenhum") }}</p>
     {% endfor %}
+  {% endcall %}
+  {% endif %}
+
+  {% if aba == "conta" %}
+  {% call card("configuracoes.conta_titulo") %}
+    <p class="mb-3 text-muted-foreground">{{ t("configuracoes.conta_sub") }}</p>
+    {% if ultimo_admin_em %}
+    <p class="text-destructive">{{ t("configuracoes.conta_ultimo_admin") }}</p>
+    {% else %}
+    <form method="post" action="/configuracoes/conta/excluir" hx-confirm="{{ t('confirmar.excluir_conta') }}" class="flex flex-col gap-3">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {{ campo("confirmar_conta", "configuracoes.conta_confirmar", "confirmar", extra="required autocomplete=off") }}
+      {{ botao("configuracoes.conta_excluir", tipo="submit", tom="secundario") }}
+    </form>
+    {% endif %}
   {% endcall %}
   {% endif %}
 </div>
