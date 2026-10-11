@@ -1,0 +1,6 @@
+{# Item do menu lateral: o onboarding com o progresso. Contexto: situacao, ativo. #}
+<a href="/onboarding" {{ 'aria-current=page' if ativo }}
+   class="flex items-center justify-between gap-3 rounded-xl px-3 py-2 {{ 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' if ativo else 'text-sidebar-foreground hover:bg-sidebar-accent' }}">
+  <span>{{ t("onboarding.titulo_pronto") if situacao.pronto else t("onboarding.titulo") }}</span>
+  <span class="text-xs text-muted-foreground" aria-label="{{ t('onboarding.progresso_aria') }}">{{ t("onboarding.progresso", feitos=situacao.feitos, total=situacao.total) }}</span>
+</a>
