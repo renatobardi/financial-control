@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from financeiro import i18n, orcamento, realizado, store
 from financeiro.i18n import t
 from financeiro.store import portfolio
+from financeiro.web.parametros import IntOpcional
 from financeiro.web.sessao import Contexto, conexao_db, exigir_edicao, exigir_sessao
 from financeiro.web.templates import renderizar
 
@@ -21,9 +22,9 @@ def _tabela(
     conexao: store.Conexao,
     contexto: Contexto,
     *,
-    rev: int | None = None,
+    rev: IntOpcional = None,
     base: str = "bruto",
-    comparar: int | None = None,
+    comparar: IntOpcional = None,
     ok: str | None = None,
     erro: str | None = None,
     status: int = 200,
@@ -95,9 +96,9 @@ def _tabela(
 
 @roteador.get("")
 def pagina(
-    rev: int | None = None,
+    rev: IntOpcional = None,
     base: str = "bruto",
-    comparar: int | None = None,
+    comparar: IntOpcional = None,
     contexto: Contexto = Depends(exigir_sessao),
 ):
     if contexto.bd_id is None:
@@ -117,9 +118,9 @@ def pagina(
 @roteador.get("/tabela")
 def tabela(
     request: Request,
-    rev: int | None = None,
+    rev: IntOpcional = None,
     base: str = "bruto",
-    comparar: int | None = None,
+    comparar: IntOpcional = None,
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):

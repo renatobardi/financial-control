@@ -5,6 +5,7 @@ from financeiro import autenticacao, cenarios, orcamento, store
 from financeiro import senha as senhas
 from financeiro.i18n import t
 from financeiro.store import acesso
+from financeiro.web.parametros import IntOpcional
 from financeiro.web.sessao import (
     NOME_COOKIE,
     Contexto,
@@ -138,9 +139,9 @@ def criar_conta(
 
 @roteador.get("/")
 def inicio(
-    cenario: int | None = None,
+    cenario: IntOpcional = None,
     base: str = "bruto",
-    rev: int | None = None,
+    rev: IntOpcional = None,
     contexto: Contexto | None = Depends(contexto_opcional),
     conexao: store.Conexao = Depends(conexao_db),
 ):

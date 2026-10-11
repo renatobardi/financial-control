@@ -3,6 +3,7 @@ from fastapi.responses import RedirectResponse
 
 from financeiro import realizado, store
 from financeiro.i18n import t
+from financeiro.web.parametros import IntOpcional
 from financeiro.web.sessao import Contexto, conexao_db, exigir_sessao
 from financeiro.web.templates import renderizar
 
@@ -20,7 +21,7 @@ def _parametros(request: Request, ano, dimensao, origem, base):
 @roteador.get("")
 def pagina(
     request: Request,
-    ano: int | None = None,
+    ano: IntOpcional = None,
     dimensao: str = "iniciativa",
     origem: str = "todas",
     base: str = "bruto",
@@ -48,7 +49,7 @@ def pagina(
 @roteador.get("/tabela")
 def tabela(
     request: Request,
-    ano: int | None = None,
+    ano: IntOpcional = None,
     dimensao: str = "iniciativa",
     origem: str = "todas",
     base: str = "bruto",

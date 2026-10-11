@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from financeiro import store
 from financeiro.i18n import t
 from financeiro.web import cadastros as abas
+from financeiro.web.parametros import IntOpcional
 from financeiro.web.sessao import Contexto, conexao_db, exigir_edicao, exigir_sessao
 from financeiro.web.templates import renderizar
 
@@ -28,7 +29,7 @@ def _fragmento(
     *,
     pagina: int = 1,
     q: str = "",
-    ano: int | None = None,
+    ano: IntOpcional = None,
     ok: str | None = None,
     erro: str | None = None,
     status: int = 200,
@@ -78,7 +79,7 @@ def lista(
     aba: str,
     pagina: int = 1,
     q: str = "",
-    ano: int | None = None,
+    ano: IntOpcional = None,
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
