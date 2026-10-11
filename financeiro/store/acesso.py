@@ -36,6 +36,22 @@ def criar_bd(conexao: sqlite3.Connection, nome: str, sigla: str) -> int:
     return cursor.lastrowid
 
 
+def criar_bd_com_admin(conexao: sqlite3.Connection, nome: str, sigla: str, usuario_id: int) -> int:
+    """Cria o BD e o vínculo de Admin numa transação só: se um falha, nenhum fica."""
+    try:
+        cursor = conexao.execute("INSERT INTO bd (nome, sigla) VALUES (?, ?)", (nome, sigla))
+        bd_id = cursor.lastrowid
+        conexao.execute(
+            "INSERT INTO membro (bd_id, usuario_id, papel) VALUES (?, ?, 'Admin')",
+            (bd_id, usuario_id),
+        )
+    except sqlite3.Error:
+        conexao.rollback()
+        raise
+    conexao.commit()
+    return bd_id
+
+
 def criar_usuario(
     conexao: sqlite3.Connection, email: str, nome: str, senha_hash: str | None
 ) -> int:

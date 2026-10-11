@@ -1,7 +1,17 @@
 """Implantação: primeiro Admin e dados de exemplo. Sem SQL: usa o store."""
 
+import unicodedata
+
 from financeiro import senha as senhas
-from financeiro.store import Conexao, acesso, cadastros, organizacao, pessoas, portfolio
+from financeiro.store import (
+    Conexao,
+    ErroDeIntegridade,
+    acesso,
+    cadastros,
+    organizacao,
+    pessoas,
+    portfolio,
+)
 
 SENHA_MINIMA = 8
 
@@ -56,16 +66,24 @@ def criar_admin(conexao: Conexao, email: str, nome: str, bd_nome: str, senha: st
     return situacao
 
 
+def _tem_caractere_invisivel(nome: str) -> bool:
+    """Controle, formato (espaço de largura zero) e afins: o nome ficaria invisível ou enganoso."""
+    return any(unicodedata.category(c).startswith("C") for c in nome)
+
+
 def criar_bd_do_usuario(conexao: Conexao, usuario_id: int, nome: str) -> int:
     """Cria um BD e faz do usuário o Admin dele. A sigla são as duas primeiras letras do nome."""
     nome = nome.strip()
-    if not nome or len(nome) > NOME_BD_MAXIMO:
+    if not nome or len(nome) > NOME_BD_MAXIMO or _tem_caractere_invisivel(nome):
         raise NomeDeBdInvalido(nome)
     if acesso.achar_bd_por_nome(conexao, nome) is not None:
         raise NomeDeBdRepetido(nome)
-    bd_id = acesso.criar_bd(conexao, nome, nome[:2].upper())
-    acesso.adicionar_membro(conexao, bd_id, usuario_id, "Admin")
-    return bd_id
+    try:
+        return acesso.criar_bd_com_admin(conexao, nome, nome[:2].upper(), usuario_id)
+    except ErroDeIntegridade as erro:
+        if "bd.nome" in str(erro):  # outra criação chegou entre a checagem e o INSERT
+            raise NomeDeBdRepetido(nome) from erro
+        raise
 
 
 def semear(conexao: Conexao, senha: str | None) -> None:

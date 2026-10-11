@@ -1,6 +1,6 @@
 import pytest
 
-from financeiro import administracao
+from financeiro import administracao, store
 from financeiro.store import acesso
 
 
@@ -54,3 +54,28 @@ def test_nome_repetido_e_recusado_sem_mudar_o_bd_existente(conexao, ana):
 
     assert acesso.papel_do(conexao, existente, ana) is None
     assert acesso.papel_do(conexao, existente, bia) == "Admin"
+
+
+@pytest.mark.parametrize("nome", ["​", "Mo​bility", "Mo\x00bility", "Mo\nbility"])
+def test_nome_com_caractere_invisivel_ou_de_controle_e_recusado(conexao, ana, nome):
+    with pytest.raises(administracao.NomeDeBdInvalido):
+        administracao.criar_bd_do_usuario(conexao, ana, nome)
+
+    assert acesso.bds_do_usuario(conexao, ana) == []
+
+
+def test_falha_ao_vincular_o_admin_nao_deixa_bd_orfao(conexao):
+    with pytest.raises(store.ErroDeIntegridade):
+        administracao.criar_bd_do_usuario(conexao, 9999, "Orfao")  # usuário inexistente
+
+    assert acesso.achar_bd_por_nome(conexao, "Orfao") is None
+
+
+def test_corrida_no_nome_vira_nome_repetido(conexao, ana, monkeypatch):
+    acesso.criar_bd(conexao, "Mobility", "MO")
+    monkeypatch.setattr(
+        acesso, "achar_bd_por_nome", lambda *_: None
+    )  # a outra criação chegou antes
+
+    with pytest.raises(administracao.NomeDeBdRepetido):
+        administracao.criar_bd_do_usuario(conexao, ana, "Mobility")
