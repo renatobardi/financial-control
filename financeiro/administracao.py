@@ -78,12 +78,16 @@ def criar_bd_do_usuario(conexao: Conexao, usuario_id: int, nome: str) -> int:
         raise NomeDeBdInvalido(nome)
     if acesso.achar_bd_por_nome(conexao, nome) is not None:
         raise NomeDeBdRepetido(nome)
-    try:
-        return acesso.criar_bd_com_admin(conexao, nome, nome[:2].upper(), usuario_id)
+    try:  # o BD e o vínculo de Admin nascem juntos: se um falha, nenhum fica
+        bd_id = acesso.criar_bd(conexao, nome, nome[:2].upper(), confirmar=False)
+        acesso.adicionar_membro(conexao, bd_id, usuario_id, "Admin", confirmar=False)
     except ErroDeIntegridade as erro:
+        conexao.rollback()
         if "bd.nome" in str(erro):  # outra criação chegou entre a checagem e o INSERT
             raise NomeDeBdRepetido(nome) from erro
         raise
+    conexao.commit()
+    return bd_id
 
 
 def semear(conexao: Conexao, senha: str | None) -> None:

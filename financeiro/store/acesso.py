@@ -30,26 +30,12 @@ class Membro(NamedTuple):
     pendente: bool
 
 
-def criar_bd(conexao: sqlite3.Connection, nome: str, sigla: str) -> int:
+def criar_bd(conexao: sqlite3.Connection, nome: str, sigla: str, *, confirmar: bool = True) -> int:
+    """`confirmar=False` deixa a transação aberta, para quem agrupa com outros passos."""
     cursor = conexao.execute("INSERT INTO bd (nome, sigla) VALUES (?, ?)", (nome, sigla))
-    conexao.commit()
+    if confirmar:
+        conexao.commit()
     return cursor.lastrowid
-
-
-def criar_bd_com_admin(conexao: sqlite3.Connection, nome: str, sigla: str, usuario_id: int) -> int:
-    """Cria o BD e o vínculo de Admin numa transação só: se um falha, nenhum fica."""
-    try:
-        cursor = conexao.execute("INSERT INTO bd (nome, sigla) VALUES (?, ?)", (nome, sigla))
-        bd_id = cursor.lastrowid
-        conexao.execute(
-            "INSERT INTO membro (bd_id, usuario_id, papel) VALUES (?, ?, 'Admin')",
-            (bd_id, usuario_id),
-        )
-    except sqlite3.Error:
-        conexao.rollback()
-        raise
-    conexao.commit()
-    return bd_id
 
 
 def criar_usuario(
@@ -85,12 +71,15 @@ def nome_do_bd(conexao: sqlite3.Connection, bd_id: int) -> str | None:
     return linha[0] if linha else None
 
 
-def adicionar_membro(conexao: sqlite3.Connection, bd_id: int, usuario_id: int, papel: str) -> None:
+def adicionar_membro(
+    conexao: sqlite3.Connection, bd_id: int, usuario_id: int, papel: str, *, confirmar: bool = True
+) -> None:
     conexao.execute(
         "INSERT INTO membro (bd_id, usuario_id, papel) VALUES (?, ?, ?)",
         (bd_id, usuario_id, papel),
     )
-    conexao.commit()
+    if confirmar:
+        conexao.commit()
 
 
 def papel_do(conexao: sqlite3.Connection, bd_id: int, usuario_id: int) -> str | None:
