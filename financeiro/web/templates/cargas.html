@@ -20,7 +20,7 @@
       </select>
     </label>
     <label class="flex flex-col gap-1 text-xs font-medium">{{ t("cargas.arquivo") }}
-      <input type="file" name="arquivo" accept=".csv,text/csv" required class="text-sm font-normal">
+      <input type="file" name="arquivo" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required class="text-sm font-normal">
     </label>
     <div class="flex flex-wrap gap-2">
       <button type="submit" formaction="/cargas/validar" hx-post="/cargas/validar"

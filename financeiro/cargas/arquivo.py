@@ -1,7 +1,10 @@
-"""Leitura do CSV de carga: UTF-8, separador `;` ou `,`, cabeçalho exato. Falha antes de gravar."""
+"""Leitura do arquivo de carga: CSV (UTF-8, separador `;` ou `,`) ou planilha `.xlsx` (primeira
+aba), sempre com o cabeçalho exato. Falha antes de gravar."""
 
 import csv
 import io
+import zipfile
+from datetime import date, datetime
 
 
 class ArquivoInvalido(Exception):
@@ -13,6 +16,11 @@ class ArquivoInvalido(Exception):
 
 
 _SEPARADORES = (";", ",")
+_ASSINATURA_XLSX = b"PK\x03\x04"
+# O arquivo enviado já é limitado em bytes comprimidos; este é o teto do que ele pode virar
+# aberto, contra um zip que expande demais (zip bomb) antes de a planilha ser lida.
+LIMITE_DESCOMPRIMIDO = 50 * 1024 * 1024
+_LIMITE_LINHAS = 50_000
 
 
 def _decodificar(conteudo: bytes) -> str:
@@ -31,10 +39,82 @@ def _cabecalho_ok(celulas: list[str], colunas: tuple[str, ...], opcionais: tuple
     return set(colunas) <= set(nomes) <= permitidos and len(set(nomes)) == len(nomes)
 
 
+def _celula_para_texto(valor: object) -> str:
+    """O que o CSV teria: número sem `.0` sobrando, data do Excel como `AAAA-MM`."""
+    if valor is None:
+        return ""
+    if isinstance(valor, bool):
+        return str(valor)
+    if isinstance(valor, int):
+        return str(valor)
+    if isinstance(valor, float):
+        if valor == int(valor):
+            return str(int(valor))
+        centavos = round(valor * 100)
+        return f"{centavos / 100:.2f}" if abs(valor * 100 - centavos) < 1e-6 else repr(valor)
+    if isinstance(valor, datetime | date):
+        return f"{valor.year:04d}-{valor.month:02d}"
+    return str(valor).strip()
+
+
+def _ler_xlsx(
+    conteudo: bytes, colunas: tuple[str, ...], opcionais: tuple[str, ...]
+) -> list[tuple[int, dict[str, str]]]:
+    from openpyxl import load_workbook  # só quando chega uma planilha
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(conteudo)) as zipado:
+            if sum(i.file_size for i in zipado.infolist()) > LIMITE_DESCOMPRIMIDO:
+                raise ArquivoInvalido("XLSX_GRANDE", "A planilha é grande demais depois de aberta.")
+        livro = load_workbook(io.BytesIO(conteudo), read_only=True, data_only=True)
+        linhas_brutas = list(livro.worksheets[0].iter_rows(values_only=True))
+    except ArquivoInvalido:
+        raise
+    except Exception as erro:  # zip quebrado, XML inválido, planilha sem abas
+        raise ArquivoInvalido(
+            "XLSX_INVALIDO", "Não consegui abrir a planilha. Salve como .xlsx e envie de novo."
+        ) from erro
+    if len(linhas_brutas) > _LIMITE_LINHAS:
+        raise ArquivoInvalido("XLSX_GRANDE", f"A planilha passa de {_LIMITE_LINHAS} linhas.")
+    cabecalho = [_celula_para_texto(c) for c in (linhas_brutas[0] if linhas_brutas else ())]
+    while cabecalho and not cabecalho[-1]:  # colunas em branco à direita
+        cabecalho.pop()
+    if not cabecalho:
+        raise ArquivoInvalido("XLSX_VAZIO", "A planilha está vazia.")
+    if not _cabecalho_ok(cabecalho, colunas, opcionais):
+        faltando = [c for c in colunas if c not in cabecalho]
+        sobrando = [c for c in cabecalho if c and c not in colunas and c not in opcionais]
+        partes = []
+        if faltando:
+            partes.append("faltam as colunas: " + ", ".join(faltando))
+        if sobrando:
+            partes.append("colunas desconhecidas: " + ", ".join(sobrando))
+        detalhe = "; ".join(partes) or "colunas repetidas"
+        raise ArquivoInvalido(
+            "XLSX_CABECALHO",
+            f"Cabeçalho inválido ({detalhe}). Esperado: {', '.join(colunas)}.",
+        )
+    linhas = []
+    for numero, bruta in enumerate(linhas_brutas[1:], start=2):
+        textos = [_celula_para_texto(c) for c in bruta[: len(cabecalho)]]
+        textos += [""] * (len(cabecalho) - len(textos))
+        if not any(textos):
+            continue
+        linha = dict(zip(cabecalho, textos, strict=True))
+        for opcional in opcionais:
+            linha.setdefault(opcional, "")
+        linhas.append((numero, linha))
+    if not linhas:
+        raise ArquivoInvalido("XLSX_VAZIO", "A planilha só tem o cabeçalho, sem linhas de dado.")
+    return linhas
+
+
 def ler(
     conteudo: bytes, colunas: tuple[str, ...], opcionais: tuple[str, ...] = ()
 ) -> list[tuple[int, dict[str, str]]]:
     """Devolve `(número da linha no arquivo, {coluna: valor})` para cada linha com dado."""
+    if conteudo[:4] == _ASSINATURA_XLSX:
+        return _ler_xlsx(conteudo, colunas, opcionais)
     texto = _decodificar(conteudo)
     if not texto.strip():
         raise ArquivoInvalido("CSV_VAZIO", "O arquivo está vazio.")
