@@ -1,12 +1,14 @@
 {% extends "base.html" %}
+{% from "_macros.html" import logo %}
 {% block titulo %}{{ t("bds.titulo") }}{% endblock %}
 {% block corpo %}
 <main class="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-5 p-6">
+  {{ logo() }}
   <section class="flex flex-col gap-4 rounded-2xl bg-card p-6 ring-1 ring-border">
     {% if bds %}
     <header class="flex flex-col gap-1">
       <h1 class="text-xl font-semibold tracking-tight">{{ t("bds.titulo") }}</h1>
-      <p class="text-muted-foreground">{{ t("bds.sub") }}</p>
+      <p class="text-muted-foreground">{{ t("bds.sub", nome=usuario.nome, n=bds|length) }}</p>
     </header>
     <ul class="flex flex-col gap-2">
       {% for bd in bds %}
@@ -25,7 +27,7 @@
     {% else %}
     <header class="flex flex-col gap-1">
       <h1 class="text-xl font-semibold tracking-tight">{{ t("bds.sem_acesso") }}</h1>
-      <p class="text-muted-foreground">{{ t("bds.sem_acesso_sub") }}</p>
+      <p class="text-muted-foreground">{{ t("bds.sem_acesso_sub", email=usuario.email) }}</p>
     </header>
     {% endif %}
     <form method="post" action="/sair">

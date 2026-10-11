@@ -173,6 +173,7 @@ def escolher_bd(
 ):
     return renderizar(
         "bds.html",
+        usuario=contexto.usuario,
         tema=_tema(contexto),
         csrf=contexto.csrf,
         bds=acesso.bds_do_usuario(conexao, contexto.usuario.id),

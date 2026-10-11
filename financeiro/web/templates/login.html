@@ -1,8 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import botao %}
+{% from "_macros.html" import botao, logo, campo_senha %}
 {% block titulo %}{{ t("auth.titulo_login") }}{% endblock %}
 {% block corpo %}
 <main class="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-5 p-6">
+  {{ logo() }}
   <section class="flex flex-col gap-4 rounded-2xl bg-card p-6 ring-1 ring-border">
     <header class="flex flex-col gap-1">
       <h1 class="text-xl font-semibold tracking-tight">{{ t("auth.titulo_login") }}</h1>
@@ -10,13 +11,10 @@
     </header>
     <form method="post" action="/login" class="flex flex-col gap-3">
       <label class="flex flex-col gap-1.5 font-medium" for="email">{{ t("auth.email") }}
-        <input id="email" name="email" type="email" autocomplete="email" required value="{{ email or '' }}"
+        <input id="email" name="email" type="email" autocomplete="email" required placeholder="{{ t('auth.email_exemplo') }}" value="{{ email or '' }}"
                class="h-9 rounded-4xl border border-input bg-background px-3.5 font-normal">
       </label>
-      <label class="flex flex-col gap-1.5 font-medium" for="senha">{{ t("auth.senha") }}
-        <input id="senha" name="senha" type="password" autocomplete="current-password" required
-               class="h-9 rounded-4xl border border-input bg-background px-3.5 font-normal">
-      </label>
+      {{ campo_senha("senha", "senha", t("auth.senha"), "current-password") }}
       {% if erro %}
       <div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>
       {% endif %}

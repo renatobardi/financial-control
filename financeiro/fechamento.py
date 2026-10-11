@@ -120,8 +120,9 @@ def fechar(
         armazem.fechar_mes(conexao, bd_id, mes, _iso(agora), congelado)
         armazem_consumo.gravar_realizado(conexao, bd_id, mes, calculo.linhas)
         armazem.registrar_log(
-            conexao, bd_id, mes, "fechou", usuario_id, _iso(agora), motivo.strip()
-        )
+            conexao, bd_id, mes, "fechou", usuario_id, _iso(agora), motivo.strip(),
+            calculado.total_centavos,
+        )  # fmt: skip
         conexao.commit()
     except Exception:
         conexao.rollback()

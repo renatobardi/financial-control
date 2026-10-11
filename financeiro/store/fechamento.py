@@ -14,6 +14,7 @@ class EntradaLog(NamedTuple):
     autor: str
     em: str
     motivo: str
+    valor_centavos: int | None
 
 
 def meses_fechados(conexao: sqlite3.Connection, bd_id: int) -> list[str]:
@@ -54,17 +55,18 @@ def registrar_log(
     usuario_id: int,
     em: str,
     motivo: str,
+    valor_centavos: int | None = None,
 ) -> None:
     conexao.execute(
-        "INSERT INTO fechamento_log (bd_id, mes, acao, usuario_id, em, motivo)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        (bd_id, mes, acao, usuario_id, em, motivo),
+        "INSERT INTO fechamento_log (bd_id, mes, acao, usuario_id, em, motivo, valor_centavos)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (bd_id, mes, acao, usuario_id, em, motivo, valor_centavos),
     )
 
 
 def listar_log(conexao: sqlite3.Connection, bd_id: int) -> list[EntradaLog]:
     linhas = conexao.execute(
-        "SELECT l.mes, l.acao, u.nome, l.em, l.motivo FROM fechamento_log l"
+        "SELECT l.mes, l.acao, u.nome, l.em, l.motivo, l.valor_centavos FROM fechamento_log l"
         " JOIN usuario u ON u.id = l.usuario_id WHERE l.bd_id = ? ORDER BY l.id DESC",
         (bd_id,),
     ).fetchall()
