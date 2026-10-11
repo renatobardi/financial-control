@@ -171,3 +171,13 @@ def markup_vigente(conexao: sqlite3.Connection, bd_id: int, mes: str) -> Markup 
         (bd_id, mes, mes),
     ).fetchone()
     return Markup(*linha) if linha else None
+
+
+def alterar_markup_vigente(conexao: sqlite3.Connection, bd_id: int, centesimos_pct: int) -> bool:
+    """Troca o percentual do markup vigente (o de vigência aberta). False se não há vigente."""
+    cursor = conexao.execute(
+        "UPDATE markup SET centesimos_pct = ? WHERE bd_id = ? AND vigencia_fim IS NULL",
+        (centesimos_pct, bd_id),
+    )
+    conexao.commit()
+    return cursor.rowcount > 0

@@ -18,6 +18,7 @@
 <div id="aba-conteudo" class="flex flex-col gap-4">
   {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
   {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+  {% if conteudo.nota %}<p class="text-sm text-muted-foreground">{{ conteudo.nota }}</p>{% endif %}
   {% if not pode_editar %}
   <p class="rounded-xl bg-muted px-3 py-2 text-muted-foreground">{{ t("cadastros.somente_leitura") }}</p>
   {% endif %}

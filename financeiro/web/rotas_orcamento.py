@@ -43,7 +43,13 @@ def _tabela(
     if selecionada is not None:
         linhas = orcamento.linhas(conexao, bd_id, selecionada.id, agora)
         markup = orcamento.markup_da_revisao(conexao, bd_id, selecionada, agora)
-        base_cmp = next((r for r in todas if r.id == comparar), None)
+        if comparar == 0:  # "sem comparação"
+            base_cmp = None
+        elif comparar is None:  # padrão: a revisão anterior
+            posicao = next(i for i, r in enumerate(todas) if r.id == selecionada.id)
+            base_cmp = todas[posicao - 1] if posicao > 0 else None
+        else:
+            base_cmp = next((r for r in todas if r.id == comparar), None)
         if base_cmp is not None:
             anteriores = {
                 (x.iniciativa_id, x.tipo): x
@@ -74,10 +80,26 @@ def _tabela(
                 "gap": orcamento.gap(v, total_ano),
             }
         )
+    presentes = {(x.iniciativa_id, x.tipo) for x in linhas}
+    removidas = [
+        {
+            "iniciativa": antes.iniciativa,
+            "tipo": antes.tipo,
+            "delta": -valor(antes),
+        }
+        for chave, antes in anteriores.items()
+        if chave not in presentes
+    ]
     tot_bruto = sum(x.bruto_centavos for x in linhas)
     tot_liquido = sum(x.liquido_centavos for x in linhas)
     tot_capex = sum(x.bruto_centavos for x in linhas if x.tipo == "CAPEX")
     tot_opex = sum(x.bruto_centavos for x in linhas if x.tipo == "OPEX")
+    delta_total = (
+        total - sum(valor(a) for a in anteriores.values()) if base_cmp is not None else None
+    )
+    pode_nova = (
+        orcamento.rascunho(conexao, bd_id) is None and len(todas) < orcamento.LIMITE_REVISOES
+    )
     return renderizar(
         "orcamento/_tabela.html",
         status,
@@ -96,6 +118,11 @@ def _tabela(
         tot_liquido=tot_liquido,
         tot_capex=tot_capex,
         tot_opex=tot_opex,
+        removidas=removidas,
+        delta_total=delta_total,
+        pode_nova=pode_nova,
+        pct_capex=(tot_capex * 100 // tot_bruto) if tot_bruto else 0,
+        pct_opex=(tot_opex * 100 // tot_bruto) if tot_bruto else 0,
         csrf=contexto.csrf,
         pode_editar=contexto.papel in ("Admin", "Editor"),
         ok=ok,
