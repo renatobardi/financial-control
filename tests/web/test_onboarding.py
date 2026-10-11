@@ -2,7 +2,7 @@
 
 import pytest
 
-from financeiro.store import cadastros
+from financeiro.store import cadastros, portfolio
 from tests.ajuda import cadastrar_ate_pessoa
 from tests.web.ajuda import csrf_de, entrar, semear
 
@@ -143,3 +143,35 @@ def test_editor_nao_consome_a_abertura_do_primeiro_admin(ambiente):
     entrar(ambiente, email="bia@empresa.com")
 
     assert ambiente.cliente.get("/").headers["location"] == "/onboarding"
+
+
+def test_tela_lista_as_pendencias_do_passo_feito_com_link_para_corrigir(ambiente):
+    _, ids = semear(ambiente, bds=(("Mobility", "Admin"),))
+    entrar(ambiente)
+    bd = ids["Mobility"]
+    cargo = cadastrar_ate_pessoa(ambiente.conexao, bd)
+    cadastros.definir_tarifa(ambiente.conexao, bd, cargo, 12000, "2026-01")
+    cadastros.definir_markup(ambiente.conexao, bd, 1050, "2026-01")
+    portfolio.criar_iniciativa(ambiente.conexao, bd, "I-02", "Beta")
+
+    html = ambiente.cliente.get("/onboarding").text
+
+    assert "Iniciativas sem demanda (1): I-02 Beta" in html
+    assert 'href="/cadastros?aba=demandas"' in html
+    assert "sem squad" not in html  # a organização está completa
+
+
+def test_tela_corta_a_lista_em_cinco_nomes(ambiente):
+    _, ids = semear(ambiente, bds=(("Mobility", "Admin"),))
+    entrar(ambiente)
+    bd = ids["Mobility"]
+    cadastrar_ate_pessoa(ambiente.conexao, bd)
+    for n in range(2, 9):  # sete iniciativas sem demanda
+        portfolio.criar_iniciativa(ambiente.conexao, bd, f"I-{n:02d}", f"Extra {n}")
+
+    html = ambiente.cliente.get("/onboarding").text
+
+    assert "Iniciativas sem demanda (7): " in html
+    assert "I-06 Extra 6" in html
+    assert "I-07 Extra 7" not in html
+    assert "e mais 2" in html
