@@ -26,11 +26,13 @@
       </select></label>
     <button type="submit" class="h-9 rounded-4xl bg-secondary px-4 font-medium text-secondary-foreground">{{ t("visao.aplicar") }}</button>
   </form>
+  {{ bloco_lazy("/visao-geral/contexto" ~ q, gatilho="load", altura="h-8") }}
   {{ bloco_lazy("/visao-geral/kpis" ~ q, gatilho="load", altura="h-24") }}
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     {{ bloco_lazy("/visao-geral/curva" ~ q, gatilho="load", altura="h-64") }}
     {{ bloco_lazy("/visao-geral/alertas" ~ q, gatilho="revealed", altura="h-64") }}
   </div>
+  {{ bloco_lazy("/visao-geral/pessoas" ~ q, gatilho="revealed", altura="h-24") }}
   {{ bloco_lazy("/visao-geral/risco" ~ q, gatilho="revealed", altura="h-64") }}
 </div>
 {% endblock %}

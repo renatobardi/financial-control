@@ -1,0 +1,11 @@
+{% from "_macros.html" import cartao %}
+<section class="flex flex-col gap-2">
+  <h2 class="font-semibold">{{ t("visao.pessoas") }} · {{ mes_ref }}</h2>
+  <dl class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    {% call cartao(t("visao.pessoas_ativos")) %}{{ ativos }}{% endcall %}
+    {% call cartao(t("visao.pessoas_func_terc")) %}{{ funcionarios }} · {{ terceiros }}{% endcall %}
+    {% call cartao(t("visao.pessoas_vagas")) %}{{ vagas_abertas }}{% endcall %}
+    {% call cartao(t("visao.pessoas_custo")) %}{{ valor(custo_pessoas) }}{% endcall %}
+    {% call cartao(t("visao.pessoas_extras")) %}{{ numero(horas_extras) }} {{ t("visao.unidade_horas") }}{% endcall %}
+  </dl>
+</section>

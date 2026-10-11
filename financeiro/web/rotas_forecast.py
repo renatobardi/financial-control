@@ -32,6 +32,7 @@ def _painel(
     cenario_id: int | None = None,
     base: str = "bruto",
     rev: IntOpcional = None,
+    detalhe: str | None = None,
     ok: str | None = None,
     erro: str | None = None,
     status: int = 200,
@@ -45,6 +46,8 @@ def _painel(
     resumo = forecast.resumo(conexao, bd_id, ano, cenario, base, agora, rev)
     nomes = {e.chave: e.nome for e in comp.elementos}
     nomes["__saldo"] = t("forecast.legenda_disponivel")
+    formato = contexto.usuario.formato_valor
+    base_url = f"/forecast/painel?cenario={cenario.id}&base={base}" + (f"&rev={rev}" if rev else "")
     svg = graficos.treemap_svg(
         comp.blocos,
         nomes,
@@ -52,7 +55,19 @@ def _painel(
         forecast.ALTURA_TREEMAP,
         t("forecast.titulo"),
         {e.chave: e.realizado for e in comp.incluidos},
+        links={e.chave: f"{base_url}&detalhe={e.chave}" for e in comp.incluidos},
+        valores={e.chave: i18n.valor_abreviado(e.total, formato) for e in comp.incluidos},
+        selecionado=detalhe,
     )
+    elemento = next((e for e in comp.elementos if e.chave == detalhe), None)
+    situacao = None
+    if elemento is not None:
+        if elemento.chave in cenario.incluidos:
+            situacao = ("incluido", 0)
+        elif elemento.total <= comp.disponivel + 100:
+            situacao = ("cabe", 0)
+        else:
+            situacao = ("falta", elemento.total - max(comp.disponivel, 0))
     orgs = organizacao.listar_orgs(conexao, bd_id)
     if cenario.escala_tipo == "Agrupamento":
         opcoes_escala = [(a.id, a.nome) for a in portfolio.listar_agrupamentos(conexao, bd_id)]
@@ -73,6 +88,15 @@ def _painel(
         comp=comp,
         resumo=resumo,
         svg=svg,
+        detalhe=elemento,
+        situacao=situacao,
+        escala_padrao=(
+            forecast.composicao(
+                conexao, bd_id, ano, cenario._replace(escala_valor_centavos=None), base, agora, rev
+            ).escala_valor
+            if comp.escala_do_cenario
+            else comp.escala_valor
+        ),
         bandeja=[e for e in comp.elementos if e.chave not in cenario.incluidos],
         opcoes_escala=opcoes_escala,
         vagas=vagas,
@@ -113,11 +137,14 @@ def painel(
     cenario: IntOpcional = None,
     base: str = "bruto",
     rev: IntOpcional = None,
+    detalhe: str | None = None,
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
     _exigir_bd(contexto)
-    return _painel(request, conexao, contexto, cenario_id=cenario, base=base, rev=rev)
+    return _painel(
+        request, conexao, contexto, cenario_id=cenario, base=base, rev=rev, detalhe=detalhe
+    )
 
 
 def _cenario_do_bd(conexao: store.Conexao, bd_id: int, cenario_id: int):
@@ -278,3 +305,15 @@ def inicio_da_vaga(
             erro=t("forecast.erro_mes"), status=400,
         )  # fmt: skip
     return _painel(request, conexao, contexto, cenario_id=cenario_id, ok=t("forecast.ok_vaga"))
+
+
+@roteador.post("/cenarios/{cenario_id}/escala/padrao")
+def voltar_ao_padrao(
+    request: Request,
+    cenario_id: int,
+    contexto: Contexto = Depends(exigir_edicao),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    _cenario_do_bd(conexao, contexto.bd_id, cenario_id)
+    cenarios.atualizar(conexao, contexto.bd_id, cenario_id, escala_valor_centavos=None)
+    return _painel(request, conexao, contexto, cenario_id=cenario_id, ok=t("forecast.ok_salvo"))

@@ -79,3 +79,23 @@ def mes_esta_fechado(conexao: sqlite3.Connection, bd_id: int, mes: str) -> bool:
         ).fetchone()
         is not None
     )
+
+
+def horas_extras_aprovadas(conexao: sqlite3.Connection, bd_id: int, ano: int) -> int:
+    return conexao.execute(
+        "SELECT COALESCE(SUM(horas), 0) FROM alocacao WHERE bd_id = ? AND extra = 1 AND mes LIKE ?",
+        (bd_id, f"{ano:04d}-%"),
+    ).fetchone()[0]
+
+
+def ordens_previstas(conexao: sqlite3.Connection, bd_id: int) -> int:
+    return conexao.execute(
+        "SELECT COUNT(*) FROM compra WHERE bd_id = ? AND status = 'prevista'", (bd_id,)
+    ).fetchone()[0]
+
+
+def ultima_carga_em(conexao: sqlite3.Connection, bd_id: int) -> str | None:
+    linha = conexao.execute(
+        "SELECT MAX(em) FROM carga WHERE bd_id = ? AND estado = 'ativa'", (bd_id,)
+    ).fetchone()
+    return linha[0]

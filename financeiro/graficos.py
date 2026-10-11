@@ -11,6 +11,7 @@ from financeiro.treemap import Bloco
 _FG = "var(--foreground)"
 _BORDA = "var(--border)"
 _MUDO = "var(--muted-foreground)"
+_PALETA = ("var(--chart-5)", "var(--chart-3)", "var(--chart-4)", "var(--chart-1)")
 
 
 def _abrir(largura: float, altura: float, titulo: str) -> list[str]:
@@ -47,11 +48,11 @@ def curva(
             f'text-anchor="middle" fill="{_MUDO}">{escape(rotulo)}</text>'
         )
     estilos = [
-        ('stroke-dasharray="4 4"', 1.5, 0.6),
-        ("", 3, 1.0),
-        ('stroke-dasharray="1 5" stroke-linecap="round"', 3, 0.7),
+        (_FG, 'stroke-dasharray="4 4"', 1.5, 0.6),
+        ("var(--chart-4)", "", 3, 1.0),
+        ("var(--chart-3)", 'stroke-dasharray="1 5" stroke-linecap="round"', 3, 0.9),
     ]
-    for (nome, valores), (traco, espessura, opacidade) in zip(
+    for (nome, valores), (cor, traco, espessura, opacidade) in zip(
         series.items(), estilos, strict=False
     ):
         pontos = " ".join(
@@ -60,7 +61,7 @@ def curva(
         if pontos:
             partes.append(
                 f'<polyline data-serie="{escape(nome, quote=True)}" points="{pontos}" fill="none" '
-                f'stroke="{_FG}" stroke-width="{espessura}" stroke-opacity="{opacidade}" {traco}/>'
+                f'stroke="{cor}" stroke-width="{espessura}" stroke-opacity="{opacidade}" {traco}/>'
             )
     partes.append("</svg>")
     return "".join(partes)
@@ -83,10 +84,10 @@ def barras_risco(itens: list[dict], titulo: str, largura: int = 640) -> str:
         partes.append(
             f'<g class="iniciativa"><text x="0" y="{y + 16}" font-size="12" fill="{_FG}">'
             f"{escape(item['nome'])}</text>"
-            f'<rect x="{rotulo_w}" y="{y + 4}" width="{real:.1f}" height="18" fill="{_FG}" '
-            f'fill-opacity="0.85"/>'
+            f'<rect x="{rotulo_w}" y="{y + 4}" width="{real:.1f}" height="18" '
+            f'fill="var(--chart-4)"/>'
             f'<rect x="{rotulo_w + real:.1f}" y="{y + 4}" width="{fc:.1f}" height="18" '
-            f'fill="{_FG}" fill-opacity="0.35"/>'
+            f'fill="var(--chart-3)" fill-opacity="0.45"/>'
             f'<line class="orcamento" x1="{orc:.1f}" y1="{y}" x2="{orc:.1f}" y2="{y + 26}" '
             f'stroke="{_FG}" stroke-width="2"/></g>'
         )
@@ -106,7 +107,8 @@ def barras_composicao(itens: list[tuple[str, int]], titulo: str, largura: int = 
         partes.append(
             f'<text x="0" y="{y + 15}" font-size="12" fill="{_FG}">{escape(rotulo)}</text>'
             f'<rect data-rotulo="{escape(rotulo, quote=True)}" x="{rotulo_w}" y="{y + 3}" '
-            f'width="{util * valor / maior:.2f}" height="18" fill="{_FG}" fill-opacity="0.8"/>'
+            f'width="{util * valor / maior:.2f}" height="18" fill="var(--chart-3)" '
+            f'fill-opacity="0.85"/>'
         )
     partes.append("</svg>")
     return "".join(partes)
@@ -119,35 +121,62 @@ def treemap_svg(
     altura: float,
     titulo: str,
     realizados: dict[str, int] | None = None,
+    links: dict[str, str] | None = None,
+    valores: dict[str, str] | None = None,
+    selecionado: str | None = None,
 ) -> str:
-    """Blocos do treemap. `__saldo` é o que sobra da escala (tracejado, sem preenchimento)."""
+    """Blocos do treemap, cada um numa cor do tema. `__saldo` é o que sobra da escala (tracejado).
+
+    `links`: chave → URL do detalhe (o bloco vira um link). `valores`: chave → texto do valor.
+    """
     realizados = realizados or {}
+    links = links or {}
+    valores = valores or {}
     partes = _abrir(largura, altura, titulo)
+    cores: dict[str, str] = {}
+    for bloco in blocos:
+        if bloco.chave != "__saldo":
+            cores[bloco.chave] = _PALETA[len(cores) % len(_PALETA)]
     for bloco in blocos:
         saldo = bloco.chave == "__saldo"
-        preench = "none" if saldo else _FG
-        opacidade = "1" if saldo else "0.18"
+        nome = escape(nomes.get(bloco.chave, bloco.chave))
+        cor = "none" if saldo else cores[bloco.chave]
+        borda = "2.5" if bloco.chave == selecionado else "1"
+        tracejado = ' stroke-dasharray="6 4"' if saldo else ""
+        abre, fecha = "", ""
+        if bloco.chave in links:
+            url = escape(links[bloco.chave], quote=True)
+            abre = (
+                f'<a href="{url}" hx-get="{url}" hx-target="#forecast" hx-swap="outerHTML" '
+                f'data-bloco="{escape(bloco.chave, quote=True)}">'
+            )
+            fecha = "</a>"
         partes.append(
-            f'<g><rect data-chave="{escape(bloco.chave, quote=True)}" x="{bloco.x:.2f}" '
+            f"<g>{abre}"
+            f'<rect data-chave="{escape(bloco.chave, quote=True)}" x="{bloco.x:.2f}" '
             f'y="{bloco.y:.2f}" width="{bloco.largura:.2f}" height="{bloco.altura:.2f}" '
-            f'fill="{preench}" fill-opacity="{opacidade}" stroke="{_FG}" stroke-width="1" '
-            f"{'stroke-dasharray=' + chr(34) + '6 4' + chr(34) if saldo else ''}>"
-            f"<title>{escape(nomes.get(bloco.chave, bloco.chave))}</title></rect>"
+            f'fill="{cor}" fill-opacity="{"1" if saldo else "0.35"}" stroke="{_FG}" '
+            f'stroke-width="{borda}"{tracejado}><title>{nome}</title></rect>'
         )
         real = realizados.get(bloco.chave, 0)
         if real and bloco.valor:
             parte = bloco.altura * min(real / bloco.valor, 1)
             partes.append(
                 f'<rect x="{bloco.x:.2f}" y="{bloco.y + bloco.altura - parte:.2f}" '
-                f'width="{bloco.largura:.2f}" height="{parte:.2f}" fill="{_FG}" '
-                f'fill-opacity="0.45"/>'
+                f'width="{bloco.largura:.2f}" height="{parte:.2f}" fill="{cor}" '
+                f'fill-opacity="0.85"/>'
             )
         if bloco.largura > 70 and bloco.altura > 28:
-            nome = escape(nomes.get(bloco.chave, bloco.chave))
             partes.append(
                 f'<text x="{bloco.x + 8:.1f}" y="{bloco.y + 20:.1f}" font-size="13" '
                 f'font-weight="600" fill="{_FG}">{nome}</text>'
             )
-        partes.append("</g>")
+            texto_valor = valores.get(bloco.chave)
+            if texto_valor and bloco.altura > 46:
+                partes.append(
+                    f'<text x="{bloco.x + 8:.1f}" y="{bloco.y + 38:.1f}" font-size="11" '
+                    f'fill="{_FG}">{escape(texto_valor)}</text>'
+                )
+        partes.append(f"{fecha}</g>")
     partes.append("</svg>")
     return "".join(partes)

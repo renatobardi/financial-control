@@ -1,9 +1,15 @@
 <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
-  <h2 class="mb-2 font-semibold">{{ t("visao.atencao") }}</h2>
+  <h2 class="mb-2 flex items-center justify-between font-semibold">{{ t("visao.atencao") }}
+    {% if v.alertas %}<span class="rounded-4xl bg-destructive/10 px-2.5 py-0.5 text-xs text-destructive">{{ v.alertas|length }}</span>{% endif %}
+  </h2>
   {% if v.alertas %}
   <ul class="flex flex-col gap-2">
     {% for a in v.alertas %}
-    <li class="rounded-xl bg-muted px-3 py-2">{{ t("visao.alerta_" ~ a.chave, **a.params) }}</li>
+    <li class="flex items-center gap-3 rounded-xl bg-muted px-3 py-2">
+      <span data-tag="{{ a.tag }}" class="rounded-4xl border border-border px-2 py-0.5 text-xs">{{ t("visao.tag_" ~ a.tag) }}</span>
+      <span class="grow">{{ t("visao.alerta_" ~ a.chave, **a.params) }}</span>
+      <a href="{{ a.url }}" class="rounded-4xl bg-secondary px-3 py-1 text-xs text-secondary-foreground">{{ a.atalho }}</a>
+    </li>
     {% endfor %}
   </ul>
   {% else %}

@@ -30,6 +30,7 @@ class Atomo:
     org_id: int | None
     valor_centavos: int  # bruto
     ref_id: int | None = None
+    demanda_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -84,7 +85,7 @@ def atomos(
                 for agrup, valor in partes:
                     resultado.append(
                         Atomo(mes, x.origem, True, x.iniciativa_id, x.tipo, agrup, x.org_id,
-                              valor, x.pessoa_id or x.compra_id)
+                              valor, x.pessoa_id or x.compra_id, x.demanda_id)
                     )  # fmt: skip
             continue
         com_lancamento: set[int] = set()
@@ -101,7 +102,7 @@ def atomos(
             for agrup, valor in partes:
                 resultado.append(
                     Atomo(mes, x.origem, False, x.iniciativa_id, x.tipo, agrup, x.org_id, valor,
-                          x.pessoa_id or x.compra_id)
+                          x.pessoa_id or x.compra_id, x.demanda_id)
                 )  # fmt: skip
         capacidade = calendario.capacidade(conexao, bd_id, ano, numero)
         horas_custo: dict[int, int | None] = {}
@@ -121,10 +122,10 @@ def atomos(
             hora = bruto_por_hora(p.cargo_id)
             if hora is None:
                 continue
-            _demanda, iniciativa, tipo, agrup, _squad = mapa[p.tema_id]
+            demanda, iniciativa, tipo, agrup, _squad = mapa[p.tema_id]
             resultado.append(
                 Atomo(mes, "pessoas", False, iniciativa, tipo, agrup, p.org_id,
-                      _fator(capacidade * hora, cenario.fator_pessoas), p.id)
+                      _fator(capacidade * hora, cenario.fator_pessoas), p.id, demanda)
             )  # fmt: skip
         for v in vagas:
             inicio = inicios.get(v.id) or _proximo_mes(v.aberta_em)
@@ -133,10 +134,10 @@ def atomos(
             hora = bruto_por_hora(v.cargo_id)
             if hora is None:
                 continue
-            _demanda, iniciativa, tipo, agrup, _squad = mapa[v.tema_id]
+            demanda, iniciativa, tipo, agrup, _squad = mapa[v.tema_id]
             resultado.append(
                 Atomo(mes, "vagas", False, iniciativa, tipo, agrup, v.org_id,
-                      _fator(capacidade * hora, cenario.fator_pessoas), v.id)
+                      _fator(capacidade * hora, cenario.fator_pessoas), v.id, demanda)
             )  # fmt: skip
     return resultado
 
@@ -208,6 +209,9 @@ class Elemento:
     nome: str
     realizado: int
     forecast: int
+    demandas: int = 0
+    ordens: int = 0
+    vagas: int = 0
 
     @property
     def total(self) -> int:
@@ -225,6 +229,16 @@ class Composicao:
     soma_realizado: int
     disponivel: int
     blocos: list
+    periodo_rotulo: str = ""
+    uso_centesimos_pct: int = 0  # incluído ÷ escala, em centésimos de ponto percentual
+    escala_do_cenario: bool = False  # valor da escala informado, não o padrão
+
+
+def _rotulo_periodo(ano: int, trimestres: int) -> str:
+    marcados = [q + 1 for q in range(4) if trimestres & (1 << q)]
+    if len(marcados) == 4:
+        return f"Ano {ano}"
+    return " · ".join(f"T{q}/{str(ano)[2:]}" for q in marcados)
 
 
 def meses_do_periodo(ano: int, trimestres: int) -> list[str]:
@@ -280,6 +294,9 @@ def composicao(
 
     real: dict[int, int] = {}
     fc: dict[int, int] = {}
+    demandas: dict[int, set] = {}
+    ordens: dict[int, set] = {}
+    vagas: dict[int, set] = {}
     total_periodo = total_na_escala = 0
     for a in atomos(conexao, bd_id, ano, cenario, agora):
         if a.mes not in meses:
@@ -293,10 +310,24 @@ def composicao(
         if chave is None:
             continue
         (real if a.realizado else fc)[chave] = (real if a.realizado else fc).get(chave, 0) + valor
+        if a.demanda_id is not None:
+            demandas.setdefault(chave, set()).add(a.demanda_id)
+        if a.origem == "compras" and a.ref_id is not None:
+            ordens.setdefault(chave, set()).add(a.ref_id)
+        if a.origem == "vagas" and a.ref_id is not None:
+            vagas.setdefault(chave, set()).add(a.ref_id)
     chaves = sorted(set(real) | set(fc))
     elementos = sorted(
         (
-            Elemento(str(k), nome_de(k), real.get(k, 0), fc.get(k, 0))
+            Elemento(
+                str(k),
+                nome_de(k),
+                real.get(k, 0),
+                fc.get(k, 0),
+                len(demandas.get(k, ())),
+                len(ordens.get(k, ())),
+                len(vagas.get(k, ())),
+            )  # fmt: skip
             for k in chaves
             if real.get(k, 0) + fc.get(k, 0) > 0
         ),
@@ -330,9 +361,12 @@ def composicao(
     if disponivel > 0:
         itens.append(("__saldo", disponivel))
     blocos = treemap.layout(itens, LARGURA_TREEMAP, ALTURA_TREEMAP)
+    uso = soma * 10_000 // escala_valor if escala_valor > 0 else 0
     return Composicao(
         sorted(meses), escala_nome, escala_valor, elementos, incluidos, soma,
         sum(e.realizado for e in incluidos), disponivel, blocos,
+        _rotulo_periodo(ano, cenario.trimestres), uso,
+        cenario.escala_valor_centavos is not None,
     )  # fmt: skip
 
 
