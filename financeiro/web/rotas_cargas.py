@@ -4,10 +4,11 @@ import io
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from financeiro import store
+from financeiro import custo, store
 from financeiro.cargas import motor
 from financeiro.cargas.layouts import LAYOUTS
 from financeiro.i18n import t
+from financeiro.store import cadastros as cadastros_store
 from financeiro.store import cargas as armazem
 from financeiro.web.sessao import (
     Contexto,
@@ -40,6 +41,7 @@ def _historico(request: Request, conexao: store.Conexao, contexto: Contexto) -> 
 
 
 def _relatorio(
+    request: Request,
     conexao: store.Conexao,
     contexto: Contexto,
     *,
@@ -63,7 +65,8 @@ def _relatorio(
             "valor": carga.valor_centavos, "estado": carga.estado, "pre": False,
             "rejeicoes": [
                 {"linha": r.linha, "regra": r.regra, "mensagem": r.mensagem,
-                 "aprovavel": r.aprovavel, "aprovada": r.aprovada, "grupo": r.grupo}
+                 "aprovavel": r.aprovavel, "aprovada": r.aprovada, "grupo": r.grupo,
+                 "dados": r.dados}
                 for r in rejeicoes
             ],
         }  # fmt: skip
@@ -75,14 +78,20 @@ def _relatorio(
             "estado": "ativa", "pre": True,
             "rejeicoes": [
                 {"linha": r.linha, "regra": r.regra, "mensagem": r.mensagem,
-                 "aprovavel": r.aprovavel, "aprovada": False, "grupo": r.grupo}
+                 "aprovavel": r.aprovavel, "aprovada": False, "grupo": r.grupo,
+                 "dados": r.dados}
                 for r in pre.rejeicoes
             ],
         }  # fmt: skip
+    markup = cadastros_store.markup_vigente(
+        conexao, contexto.bd_id, request.app.state.agora().strftime("%Y-%m")
+    )
+    bruto = custo.bruta(dados["valor"], markup.centesimos_pct if markup else 0) if dados else 0
     resposta = renderizar(
         "cargas/_relatorio.html",
         status,
         r=dados,
+        bruto=bruto,
         ok=ok,
         erro=erro,
         csrf=contexto.csrf,
@@ -135,12 +144,13 @@ def modelo(layout: str, contexto: Contexto = Depends(exigir_sessao)):
 
 @roteador.get("/{carga_id}")
 def detalhe(
+    request: Request,
     carga_id: int,
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
     _exigir_bd(contexto)
-    return _relatorio(conexao, contexto, carga_id=carga_id)
+    return _relatorio(request, conexao, contexto, carga_id=carga_id)
 
 
 @roteador.get("/{carga_id}/rejeicoes.csv")
@@ -174,21 +184,23 @@ async def _enviar(
 ):
     bd_id = _exigir_bd(contexto)
     if layout not in LAYOUTS:
-        return _relatorio(conexao, contexto, erro=t("cargas.erro_layout"), status=400)
+        return _relatorio(request, conexao, contexto, erro=t("cargas.erro_layout"), status=400)
     conteudo = await arquivo.read(LIMITE_BYTES + 1)
     if not conteudo:
-        return _relatorio(conexao, contexto, erro=t("cargas.erro_sem_arquivo"), status=400)
+        return _relatorio(request, conexao, contexto, erro=t("cargas.erro_sem_arquivo"), status=400)
     if len(conteudo) > LIMITE_BYTES:
-        return _relatorio(conexao, contexto, erro=t("cargas.erro_arquivo_grande"), status=400)
+        return _relatorio(
+            request, conexao, contexto, erro=t("cargas.erro_arquivo_grande"), status=400
+        )
     try:
         rel = motor.processar(
             conexao, bd_id, layout, conteudo, arquivo.filename or "carga.csv",
             contexto.usuario.id, request.app.state.agora(), aplicar=aplicar,
         )  # fmt: skip
     except motor.CargaInvalida as erro:
-        return _relatorio(conexao, contexto, erro=f"{erro.regra}: {erro}", status=400)
+        return _relatorio(request, conexao, contexto, erro=f"{erro.regra}: {erro}", status=400)
     if not aplicar:
-        return _relatorio(conexao, contexto, pre=rel)
+        return _relatorio(request, conexao, contexto, pre=rel)
     aviso = t(
         "cargas.ok_carregada",
         id=rel.carga_id,
@@ -197,7 +209,7 @@ async def _enviar(
         iguais=rel.iguais,
         rejeitadas=rel.rejeitadas,
     )
-    return _relatorio(conexao, contexto, carga_id=rel.carga_id, ok=aviso)
+    return _relatorio(request, conexao, contexto, carga_id=rel.carga_id, ok=aviso)
 
 
 @roteador.post("/validar")
@@ -236,9 +248,11 @@ def desfazer(
         motor.desfazer(conexao, bd_id, carga_id, request.app.state.agora())
     except motor.CargaInvalida as erro:
         return _relatorio(
-            conexao, contexto, carga_id=carga_id, erro=f"{erro.regra}: {erro}", status=409
+            request, conexao, contexto, carga_id=carga_id, erro=f"{erro.regra}: {erro}", status=409
         )
-    return _relatorio(conexao, contexto, carga_id=carga_id, ok=t("cargas.ok_desfeita", id=carga_id))
+    return _relatorio(
+        request, conexao, contexto, carga_id=carga_id, ok=t("cargas.ok_desfeita", id=carga_id)
+    )
 
 
 @roteador.post("/{carga_id}/aprovar")
@@ -256,6 +270,8 @@ def aprovar(
         horas = motor.aprovar_extras(conexao, bd_id, carga_id, grupo, request.app.state.agora())
     except motor.CargaInvalida as erro:
         return _relatorio(
-            conexao, contexto, carga_id=carga_id, erro=f"{erro.regra}: {erro}", status=409
+            request, conexao, contexto, carga_id=carga_id, erro=f"{erro.regra}: {erro}", status=409
         )
-    return _relatorio(conexao, contexto, carga_id=carga_id, ok=t("cargas.ok_extras", horas=horas))
+    return _relatorio(
+        request, conexao, contexto, carga_id=carga_id, ok=t("cargas.ok_extras", horas=horas)
+    )

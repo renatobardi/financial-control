@@ -28,6 +28,8 @@ def _grade(
     meses = fechamento.situacao(conexao, contexto.bd_id, ano, agora)
     pendentes = fechamento.cargas_com_rejeicao_pendente(conexao, contexto.bd_id)
     primeiro_aberto = next((m.mes for m in meses if m.pode_fechar), None)
+    fechados = [m for m in meses if m.estado == "fechado"]
+    congelado = sum(m.totais.total_centavos for m in fechados)
     return renderizar(
         "fechamento/_grade.html",
         status,
@@ -39,6 +41,8 @@ def _grade(
         ),
         pendentes=pendentes,
         primeiro_aberto=primeiro_aberto,
+        n_fechados=len(fechados),
+        congelado=congelado,
         log=fechamento.log(conexao, contexto.bd_id),
         csrf=contexto.csrf,
         pode_editar=contexto.papel in ("Admin", "Editor"),

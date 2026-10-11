@@ -8,13 +8,17 @@
       {% if r.carga_id %}{{ t("cargas.carga_numero", id=r.carga_id) }} · {% endif %}{{ r.layout }}
       {% if r.arquivo %}<span class="font-normal text-muted-foreground">· {{ r.arquivo }}</span>{% endif %}
     </h2>
-    {% if r.pre %}<span class="text-muted-foreground">{{ t("cargas.pre_validacao") }}</span>{% endif %}
+    <span class="flex items-center gap-3">
+      {% if r.pre %}<span class="text-muted-foreground">{{ t("cargas.pre_validacao") }}</span>{% endif %}
+      <button type="button" onclick="document.getElementById('resultado').innerHTML = ''"
+              class="rounded-4xl bg-secondary px-3 py-1 text-secondary-foreground">{{ t("cargas.fechar_relatorio") }}</button>
+    </span>
   </header>
-  <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+  <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
     {% for rotulo, valor in [
       ("cargas.lidas", r.lidas), ("cargas.inseridas", r.inseridas), ("cargas.atualizadas", r.atualizadas),
       ("cargas.iguais", r.iguais), ("cargas.rejeitadas", r.rejeitadas), ("cargas.horas", numero(r.horas)),
-      ("cargas.valor", moeda(r.valor)),
+      ("cargas.valor", valor(r.valor)), ("cargas.valor_bruto", valor(bruto)),
     ] %}
     <div class="rounded-xl bg-muted p-3"><dt class="text-xs text-muted-foreground">{{ t(rotulo) }}</dt><dd class="text-lg font-semibold">{{ valor }}</dd></div>
     {% endfor %}
@@ -26,6 +30,10 @@
     <table class="w-full text-left">
       <thead class="bg-muted text-muted-foreground"><tr>
         <th class="px-3 py-2 font-medium">{{ t("cargas.col_linha") }}</th>
+        <th class="px-3 py-2 font-medium">{{ t("cargas.col_matricula") }}</th>
+        <th class="px-3 py-2 font-medium">{{ t("cargas.col_tema") }}</th>
+        <th class="px-3 py-2 font-medium">{{ t("cargas.col_mes") }}</th>
+        <th class="px-3 py-2 font-medium">{{ t("cargas.col_horas") }}</th>
         <th class="px-3 py-2 font-medium">{{ t("cargas.col_regra") }}</th>
         <th class="px-3 py-2 font-medium">{{ t("cargas.col_mensagem") }}</th>
         <th class="px-3 py-2 font-medium">{{ t("cargas.col_acao") }}</th>
@@ -34,6 +42,10 @@
         {% for j in r.rejeicoes %}
         <tr class="border-t border-border">
           <td class="px-3 py-2">{{ j.linha }}</td>
+          <td class="px-3 py-2">{{ j.dados.get("matricula", "—") }}</td>
+          <td class="px-3 py-2">{{ j.dados.get("tema_codigo", "—") }}</td>
+          <td class="px-3 py-2">{% if j.dados.get("ano") and j.dados.get("mes", "")|string|length <= 2 and j.dados.get("mes", "").isdigit() %}{{ mes(j.dados["ano"]|int, j.dados["mes"]|int) }}{% else %}—{% endif %}</td>
+          <td class="px-3 py-2 text-right">{{ j.dados.get("horas", "—") }}</td>
           <td class="px-3 py-2 font-mono text-xs">{{ j.regra }}</td>
           <td class="px-3 py-2">{{ j.mensagem }}</td>
           <td class="px-3 py-2">

@@ -49,3 +49,30 @@
 {% macro selo(texto, chave="") %}
   <span data-selo="{{ chave }}" class="rounded-4xl bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">{{ texto }}</span>
 {% endmacro %}
+
+
+{# Marca do produto, centralizada, para as telas de acesso. #}
+{% macro logo() %}
+  <div data-logo="marca" class="flex flex-col items-center gap-2">
+    <span class="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+      <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>
+    </span>
+    <span class="text-lg font-semibold tracking-tight">{{ t("casca.marca") }}</span>
+    <span class="text-xs text-muted-foreground">{{ t("casca.tagline") }}</span>
+  </div>
+{% endmacro %}
+
+{# Campo de senha com o botão de mostrar e ocultar (um onclick, sem biblioteca). #}
+{% macro campo_senha(id, nome, rotulo, autocomplete) %}
+  <label class="flex flex-col gap-1.5 font-medium" for="{{ id }}">{{ rotulo }}
+    <span class="relative flex">
+      <input id="{{ id }}" name="{{ nome }}" type="password" autocomplete="{{ autocomplete }}" required
+             class="h-9 grow rounded-4xl border border-input bg-background px-3.5 pr-11 font-normal">
+      <button type="button" data-alternar-senha aria-label="{{ t('auth.mostrar_senha') }}" title="{{ t('auth.mostrar_senha') }}"
+              onclick="var c=document.getElementById('{{ id }}'); c.type = c.type === 'password' ? 'text' : 'password';"
+              class="absolute right-1 top-1 flex size-7 items-center justify-center rounded-4xl hover:bg-muted">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </span>
+  </label>
+{% endmacro %}

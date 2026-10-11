@@ -1,6 +1,25 @@
 <div id="grade-fechamento" class="flex flex-col gap-4">
   {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
   {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
+  <section class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-card p-4 ring-1 ring-border">
+    <p>
+      {{ t("fechamento_tela.resumo", n=n_fechados) }} ·
+      <span class="font-semibold">{{ valor(congelado) }}</span> {{ t("fechamento_tela.congelado") }}
+      {% if pendentes %}· <span class="text-destructive">{{ t("fechamento_tela.pendencia", n=pendentes) }}</span>{% endif %}
+    </p>
+    {% if pode_editar %}
+      {% if primeiro_aberto %}
+      <form method="post" action="/fechamento/{{ primeiro_aberto }}/fechar" hx-post="/fechamento/{{ primeiro_aberto }}/fechar"
+            hx-target="#grade-fechamento" hx-swap="outerHTML" hx-confirm="{{ t('confirmar.fechar_mes') }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="ano" value="{{ ano }}">
+        <button type="submit" data-principal="fechar" class="rounded-4xl bg-primary px-4 py-2 font-medium text-primary-foreground">{{ t("fechamento_tela.fechar", mes=rotulo(primeiro_aberto)) }}</button>
+      </form>
+      {% else %}
+      <span data-principal="ano-fechado" class="rounded-4xl bg-muted px-4 py-2 font-medium">{{ t("fechamento_tela.ano_fechado") }}</span>
+      {% endif %}
+    {% endif %}
+  </section>
   {% if not pode_editar %}
   <p class="rounded-xl bg-muted px-3 py-2 text-muted-foreground">{{ t("fechamento_tela.somente_leitura") }}</p>
   {% else %}
@@ -21,7 +40,7 @@
           {% else %}{{ t("fechamento_tela.aberto") }}{% endif %}
         </span>
       </div>
-      <div class="text-lg font-semibold">{{ valor_abreviado(m.totais.total_centavos, formato) }}</div>
+      <div class="text-lg font-semibold">{{ valor(m.totais.total_centavos) }}</div>
       <div class="text-xs text-muted-foreground">
         {{ t("fechamento_tela.detalhe", pessoas=m.pessoas, horas=numero(m.totais.horas), ordens=m.ordens) }}
       </div>
@@ -60,6 +79,7 @@
       <li class="rounded-xl bg-muted px-3 py-2">
         {{ data_hora(e.em) }} ·
         {{ t("fechamento_tela.log_fechou" if e.acao == "fechou" else "fechamento_tela.log_reabriu", mes=rotulo(e.mes), autor=e.autor) }}
+        {% if e.valor_centavos is not none %} · {{ valor(e.valor_centavos) }} {{ t("fechamento_tela.congelado") }}{% endif %}
         {% if e.motivo %} — {{ t("fechamento_tela.log_motivo", motivo=e.motivo) }}{% endif %}
       </li>
       {% endfor %}

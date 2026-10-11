@@ -4,7 +4,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from financeiro import calendario, i18n, vigencia
+from financeiro import calendario, custo, i18n, vigencia
 from financeiro.store import Conexao
 from financeiro.store import cargas as armazem
 
@@ -113,6 +113,16 @@ def _por_linha(
 # ---------- horas realizadas ----------
 
 
+def _valor_das_horas(ctx: Contexto, pessoa_id: int, mes: str, horas: int) -> int:
+    """Valor líquido das horas pela tarifa vigente do cargo da pessoa no mês (0 sem tarifa)."""
+    pessoa = armazem.achar(ctx.conexao, "pessoa", ctx.bd_id, {"id": pessoa_id})
+    try:
+        hora = custo.custo_hora(ctx.conexao, ctx.bd_id, pessoa["cargo_id"], mes)
+    except custo.SemTarifa:
+        return 0
+    return horas * hora.liquida_centavos
+
+
 def _horas(ctx: Contexto, linhas: list[tuple[int, dict[str, str]]]) -> list[Resultado]:
     resultados: dict[int, Resultado] = {}
     validas: list[tuple[int, dict[str, str], int, int, str, int]] = []
@@ -180,7 +190,13 @@ def _horas(ctx: Contexto, linhas: list[tuple[int, dict[str, str]]]) -> list[Resu
                 {"pessoa_id": pessoa_id, "tema_id": tema_id, "mes": mes_item},
                 {"horas": horas, "extra": 0},
             )
-            resultados[numero] = Resultado(numero, d, acao, horas=horas)
+            resultados[numero] = Resultado(
+                numero,
+                d,
+                acao,
+                horas=horas,
+                valor_centavos=_valor_das_horas(ctx, pessoa_id, mes_item, horas),
+            )
     return [resultados[n] for n, _ in linhas]
 
 
