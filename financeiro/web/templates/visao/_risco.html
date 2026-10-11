@@ -1,24 +1,44 @@
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-  <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
+{% from "_macros.html" import selo %}
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-5">
+  <section class="rounded-2xl bg-card p-4 ring-1 ring-border lg:col-span-3">
     <h2 class="font-semibold">{{ t("visao.risco") }}</h2>
     <p class="mb-2 text-xs text-muted-foreground">{{ t("visao.risco_sub") }}</p>
     {% if v.risco %}
     {{ svg|safe }}
-    <ul class="mt-2 flex flex-col gap-1 text-sm">
+    <ul class="mt-2 flex flex-col gap-2 text-sm">
       {% for r in v.risco %}
-      <li class="flex justify-between"><span>{{ r.nome }}</span>
-        <span class="{{ 'text-destructive' if r.saldo < 0 }}">{{ moeda(r.saldo) }} · {{ t("visao.saldo_negativo" if r.saldo < 0 else "visao.saldo_positivo") }}</span></li>
+      <li class="flex flex-col gap-0.5">
+        <span class="flex items-center justify-between gap-2">
+          <span class="flex items-center gap-2"><span>{{ r.nome }}</span>{{ selo(r.tipo, r.tipo|lower) }}</span>
+          <span class="{{ 'text-destructive' if r.saldo < 0 }}">{{ t("visao.saldo_negativo" if r.saldo < 0 else "visao.saldo_positivo") }} {{ valor(r.saldo) }}</span>
+        </span>
+        <span class="text-xs text-muted-foreground">
+          {{ t("visao.risco_detalhe", budget=valor(r.orcamento), realizado=valor(r.realizado), forecast=valor(r.forecast), pct=r.projetado_pct if r.projetado_pct is not none else 0) }}
+        </span>
+      </li>
       {% endfor %}
     </ul>
     {% else %}
     <p class="text-muted-foreground">{{ t("visao.sem_risco") }}</p>
     {% endif %}
   </section>
-  <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
-    <h2 class="mb-2 font-semibold">{{ t("visao.composicao") }}</h2>
-    {{ svg_composicao|safe }}
-    <ul class="mt-2 flex flex-col gap-1 text-sm">
-      {% for rotulo, valor in v.composicao %}<li class="flex justify-between"><span>{{ rotulo }}</span><span>{{ moeda(valor) }}</span></li>{% endfor %}
-    </ul>
+  <section class="flex flex-col gap-3 rounded-2xl bg-card p-4 ring-1 ring-border lg:col-span-2">
+    <h2 class="font-semibold">{{ t("visao.composicao") }}</h2>
+    <div>
+      <h3 class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{{ t("visao.comp_tipo") }}</h3>
+      <ul class="mt-1 flex flex-col gap-1 text-sm">
+        {% for rotulo, v_ in v.por_tipo %}<li class="flex justify-between"><span>{{ rotulo }}</span><span>{{ valor(v_) }}</span></li>{% endfor %}
+      </ul>
+    </div>
+    <div>
+      <h3 class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{{ t("visao.comp_origem") }}</h3>
+      {{ svg_composicao|safe }}
+    </div>
+    <div>
+      <h3 class="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">{{ t("visao.comp_agrupamento") }}</h3>
+      <ul class="mt-1 flex flex-col gap-1 text-sm">
+        {% for rotulo, v_ in v.por_agrupamento %}<li class="flex justify-between"><span>{{ rotulo }}</span><span>{{ valor(v_) }}</span></li>{% endfor %}
+      </ul>
+    </div>
   </section>
 </div>

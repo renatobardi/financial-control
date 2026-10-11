@@ -1,0 +1,11 @@
+<ul class="flex flex-wrap gap-2 text-xs">
+  {% for rotulo, texto in [
+    ("visao.chip_bd", bd), ("visao.chip_ano", ano),
+    ("visao.chip_fechado_ate", fechado_ate or "—"),
+    ("visao.chip_pdd", (revisao.rotulo ~ " · " ~ percentual(markup)) if revisao else "—"),
+    ("visao.chip_cenario", cenario.nome),
+    ("visao.chip_ultima_carga", data_hora(ultima_carga) if ultima_carga else "—"),
+  ] %}
+  <li class="rounded-4xl border border-border px-3 py-1"><span class="text-muted-foreground">{{ t(rotulo) }}</span> {{ texto }}</li>
+  {% endfor %}
+</ul>

@@ -35,15 +35,36 @@
     {% endif %}
   </nav>
 
-  <dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-    <div class="rounded-2xl bg-card p-4 ring-1 ring-border"><dt class="text-xs text-muted-foreground">{{ t("visao.kpi_budget", rev=revisoes[-1].rotulo if revisoes else "—") }}</dt>
-      <dd class="text-lg font-semibold">{{ moeda(resumo.orcamento) if resumo.orcamento is not none else "—" }}</dd></div>
-    <div class="rounded-2xl bg-card p-4 ring-1 ring-border"><dt class="text-xs text-muted-foreground">{{ t("visao.curva_realizado") }}</dt>
-      <dd class="text-lg font-semibold">{{ moeda(resumo.realizado) }}</dd></div>
-    <div class="rounded-2xl bg-card p-4 ring-1 ring-border"><dt class="text-xs text-muted-foreground">{{ t("visao.kpi_forecast", cenario=cenario.nome) }}</dt>
-      <dd class="text-lg font-semibold">{{ moeda(resumo.forecast) }}</dd></div>
-    <div class="rounded-2xl bg-card p-4 ring-1 ring-border"><dt class="text-xs text-muted-foreground">{{ t("visao.kpi_saldo") }}</dt>
-      <dd class="text-lg font-semibold {{ 'text-destructive' if resumo.gap is not none and resumo.gap < 0 }}">{{ moeda(resumo.gap) if resumo.gap is not none else "—" }}</dd></div>
+  <p class="text-sm text-muted-foreground">
+    {{ t("forecast.resumo_ano",
+         budget=valor(resumo.orcamento), realizado=valor(resumo.realizado),
+         forecast=valor(resumo.forecast), saldo=valor(resumo.gap)) }}
+  </p>
+  <dl class="grid grid-cols-1 gap-3 lg:grid-cols-3">
+    <div class="rounded-2xl bg-card p-4 ring-1 ring-border">
+      <dt class="text-xs text-muted-foreground">{{ t("forecast.cartao_escala") }} · {{ comp.escala_nome }} · {{ comp.periodo_rotulo }}</dt>
+      <dd class="text-lg font-semibold">{{ valor(comp.escala_valor) }}</dd>
+      <p class="mt-1 text-xs text-muted-foreground">
+        {% if comp.escala_do_cenario %}{{ t("forecast.escala_simulada", padrao=valor(escala_padrao)) }}
+        {% else %}{{ t("forecast.escala_padrao_texto", valor=valor(escala_padrao)) }}{% endif %}
+      </p>
+    </div>
+    <div class="rounded-2xl bg-card p-4 ring-1 ring-border">
+      <dt class="text-xs text-muted-foreground">{{ t("forecast.cartao_incluido") }}</dt>
+      <dd class="text-lg font-semibold">{{ valor(comp.soma_incluidos) }}</dd>
+      <p class="mt-1 text-xs text-muted-foreground">
+        {{ t("forecast.incluido_detalhe", realizado=valor(comp.soma_realizado), forecast=valor(comp.soma_incluidos - comp.soma_realizado), n=comp.incluidos|length) }}
+      </p>
+    </div>
+    <div class="rounded-2xl bg-card p-4 ring-1 ring-border">
+      <dt class="text-xs text-muted-foreground">{{ t("forecast.cartao_estouro" if comp.disponivel < 0 else "forecast.cartao_falta") }}</dt>
+      <dd class="text-lg font-semibold {{ 'text-destructive' if comp.disponivel < 0 }}">{{ valor(comp.disponivel|abs) }}</dd>
+      <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <span data-uso="{{ [comp.uso_centesimos_pct // 100, 100]|min }}" class="block h-full rounded-full {{ 'bg-destructive' if comp.disponivel < 0 else 'bg-primary' }}"
+              style="width: {{ [comp.uso_centesimos_pct // 100, 100]|min }}%"></span>
+      </div>
+      <p class="mt-1 text-xs text-muted-foreground">{{ t("forecast.uso", pct=comp.uso_centesimos_pct // 100) }}</p>
+    </div>
   </dl>
 
   {% if pode_editar %}
@@ -86,15 +107,53 @@
       </select></label>
     <button type="submit" class="h-9 rounded-4xl bg-primary px-4 font-medium text-primary-foreground">{{ t("forecast.salvar") }}</button>
   </form>
+  {% if comp.escala_do_cenario %}
+  <form method="post" action="/forecast/cenarios/{{ cenario.id }}/escala/padrao"
+        hx-post="/forecast/cenarios/{{ cenario.id }}/escala/padrao" hx-target="#forecast" hx-swap="outerHTML">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit" class="rounded-4xl bg-secondary px-3 py-1 text-secondary-foreground">{{ t("forecast.escala_padrao") }}</button>
+  </form>
+  {% endif %}
   {% endif %}
 
   <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
-    <h2 class="mb-2 font-semibold">{{ t("forecast.incluidos") }} · {{ t("forecast.escala_atual") }}: {{ comp.escala_nome }} · {{ moeda(comp.escala_valor) }}</h2>
-    {{ svg|safe }}
+    <h2 class="mb-2 font-semibold">{{ t("forecast.incluidos") }}</h2>
+    <div ondragover="event.preventDefault()"
+         ondrop="event.preventDefault(); htmx.ajax('POST', '/forecast/cenarios/{{ cenario.id }}/incluir', {values: {chave: event.dataTransfer.getData('text/plain')}, target: '#forecast', swap: 'outerHTML'})">
+      {{ svg|safe }}
+    </div>
     <ul class="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-      <li>▮ {{ t("forecast.legenda_realizado") }}</li><li>▯ {{ t("forecast.legenda_forecast") }}</li><li>┅ {{ t("forecast.legenda_disponivel") }}</li>
+      <li class="flex items-center gap-2"><span class="inline-block size-3 rounded-sm" style="background: var(--chart-3)"></span>{{ t("forecast.legenda_realizado") }}</li>
+      <li class="flex items-center gap-2"><span class="inline-block size-3 rounded-sm" style="background: var(--chart-3); opacity: .35"></span>{{ t("forecast.legenda_forecast") }}</li>
+      <li class="flex items-center gap-2"><span class="inline-block size-3 rounded-sm border border-dashed border-foreground"></span>{{ t("forecast.legenda_disponivel") }}</li>
     </ul>
-    <p class="mt-2 text-sm">{{ t("forecast.soma") }}: {{ moeda(comp.soma_incluidos) }} · {{ t("forecast.disponivel") }}: {{ moeda(comp.disponivel) }}</p>
+    {% if detalhe %}
+    <aside class="mt-3 flex flex-col gap-2 rounded-xl bg-muted p-3">
+      <h3 class="font-semibold">{{ t("forecast.detalhe") }} · {{ detalhe.nome }}</h3>
+      <dl class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+        <div><dt class="text-xs text-muted-foreground">{{ t("forecast.det_custo") }}</dt><dd>{{ valor(detalhe.total) }}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">{{ t("forecast.det_pct_escala") }}</dt><dd>{{ ((detalhe.total * 100 // comp.escala_valor) if comp.escala_valor else 0) }}%</dd></div>
+        <div><dt class="text-xs text-muted-foreground">{{ t("forecast.det_realizado") }}</dt><dd>{{ valor(detalhe.realizado) }}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">{{ t("forecast.det_forecast") }}</dt><dd>{{ valor(detalhe.forecast) }}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">{{ t("forecast.det_demandas") }}</dt><dd>{{ detalhe.demandas }}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">{{ t("forecast.det_ordens") }}</dt><dd>{{ detalhe.ordens }}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">{{ t("forecast.det_vagas") }}</dt><dd>{{ detalhe.vagas }}</dd></div>
+      </dl>
+      <p class="text-sm">
+        {% if situacao[0] == "incluido" %}{{ t("forecast.sit_incluido") }}
+        {% elif situacao[0] == "cabe" %}{{ t("forecast.sit_cabe") }}
+        {% else %}<span class="text-destructive">{{ t("forecast.sit_falta", valor=valor(situacao[1])) }}</span>{% endif %}
+      </p>
+      {% if pode_editar %}
+      <form method="post" action="/forecast/cenarios/{{ cenario.id }}/{{ 'retirar' if situacao[0] == 'incluido' else 'incluir' }}"
+            hx-post="/forecast/cenarios/{{ cenario.id }}/{{ 'retirar' if situacao[0] == 'incluido' else 'incluir' }}"
+            hx-target="#forecast" hx-swap="outerHTML">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="chave" value="{{ detalhe.chave }}">
+        <button type="submit" class="rounded-4xl bg-primary px-3 py-1 text-primary-foreground">{{ t("forecast.tirar" if situacao[0] == "incluido" else "forecast.incluir") }}</button>
+      </form>
+      {% endif %}
+    </aside>
+    {% endif %}
     {% if comp.incluidos %}
     <ul class="mt-2 flex flex-col gap-1">
       {% for e in comp.incluidos %}
@@ -118,7 +177,8 @@
     {% if bandeja %}
     <ul class="flex flex-col gap-1">
       {% for e in bandeja %}
-      <li class="flex items-center justify-between rounded-xl bg-muted px-3 py-2"><span>{{ e.nome }} · {{ moeda(e.total) }}</span>
+      <li draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '{{ e.chave }}')"
+          class="flex cursor-grab items-center justify-between rounded-xl bg-muted px-3 py-2"><span>{{ e.nome }} · {{ valor(e.total) }}</span>
         {% if pode_editar %}
         <form method="post" action="/forecast/cenarios/{{ cenario.id }}/incluir" hx-post="/forecast/cenarios/{{ cenario.id }}/incluir"
               hx-target="#forecast" hx-swap="outerHTML">

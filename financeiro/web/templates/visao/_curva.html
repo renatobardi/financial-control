@@ -1,9 +1,15 @@
 <section class="rounded-2xl bg-card p-4 ring-1 ring-border">
-  <h2 class="mb-2 font-semibold">{{ t("visao.curva") }}</h2>
+  <h2 class="font-semibold">{{ t("visao.curva") }}</h2>
+  {% if v.orcamento is not none %}
+  <p class="mb-2 text-xs text-muted-foreground">
+    {{ t("visao.curva_sub", base=t("realizado.base_" ~ base), total=valor(v.total_ano), budget=valor(v.orcamento)) }}
+    {% if v.gap is not none %}({{ t("visao.saldo_negativo" if v.gap < 0 else "visao.saldo_positivo") }} {{ valor(v.gap) }}){% endif %}
+  </p>
+  {% endif %}
   {{ svg|safe }}
-  <ul class="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-    <li>- - - {{ t("visao.curva_budget") }}</li>
-    <li>━ {{ t("visao.curva_realizado") }}</li>
-    <li>· · · {{ t("visao.curva_forecast") }}</li>
+  <ul class="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+    <li class="flex items-center gap-2"><svg width="22" height="6" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4"/></svg>{{ t("visao.curva_budget") }}</li>
+    <li class="flex items-center gap-2"><svg width="22" height="6" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" stroke="var(--chart-4)" stroke-width="3"/></svg>{{ t("visao.curva_realizado") }}</li>
+    <li class="flex items-center gap-2"><svg width="22" height="6" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" stroke="var(--chart-3)" stroke-width="3" stroke-dasharray="1 5" stroke-linecap="round"/></svg>{{ t("visao.curva_forecast") }}</li>
   </ul>
 </section>
