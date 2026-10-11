@@ -2,8 +2,8 @@
 
 import pytest
 
-from financeiro import organizacao
-from financeiro.store import cadastros, pessoas, portfolio
+from financeiro.store import cadastros
+from tests.ajuda import cadastrar_ate_pessoa
 from tests.web.ajuda import csrf_de, entrar, semear
 
 
@@ -13,17 +13,9 @@ def _post(ambiente, caminho, **dados):
 
 
 def _configurar_bd(conexao, bd):
-    tribo = organizacao.criar_tribo(conexao, bd, "Tribo", "G", "2026-01")
-    squad = organizacao.criar_squad(conexao, bd, "Squad", tribo, "G", "2026-01")
-    ini = portfolio.criar_iniciativa(conexao, bd, "I-01", "Iniciativa")
-    dem = portfolio.criar_demanda(conexao, bd, "D-01", ini, "Demanda", "OPEX", squad)
-    agrup = portfolio.criar_agrupamento(conexao, bd, "RTB")
-    tema = portfolio.criar_tema(conexao, bd, "T-01", dem, "Tema", agrup)
-    empresa = cadastros.criar_empresa(conexao, bd, "Própria", "propria")
-    cargo = cadastros.criar_cargo(conexao, bd, empresa, "Pleno", "N8")
+    cargo = cadastrar_ate_pessoa(conexao, bd)
     cadastros.definir_tarifa(conexao, bd, cargo, 12000, "2026-01")
     cadastros.definir_markup(conexao, bd, 1050, "2026-01")
-    pessoas.criar_pessoa(conexao, bd, "F1", "Ana", squad, cargo, tema, "2026-01", None)
 
 
 def test_sem_sessao_devolve_401(ambiente):
@@ -43,6 +35,18 @@ def test_admin_e_editor_veem_os_onze_passos(ambiente, papel):
     assert resposta.text.count("data-passo=") == 11
     assert 'data-passo="demandas" data-estado="bloqueado"' in resposta.text
     assert 'data-passo="iniciativas" data-estado="pendente"' in resposta.text
+
+
+def test_rotulos_dos_passos_saem_do_catalogo_com_o_destino_no_texto(ambiente):
+    semear(ambiente, bds=(("Mobility", "Admin"),))
+    entrar(ambiente)
+
+    html = ambiente.cliente.get("/onboarding").text
+
+    assert "Cadastrar na tela: Iniciativas" in html
+    assert "Importar arquivo: Iniciativas, demandas e temas" in html
+    assert "Falta antes: Iniciativas" in html  # passo Demandas, bloqueado
+    assert "Falta antes: Demandas, Agrupamentos" in html  # passo Temas, bloqueado por dois
 
 
 def test_leitor_nao_ve_o_onboarding(ambiente):
