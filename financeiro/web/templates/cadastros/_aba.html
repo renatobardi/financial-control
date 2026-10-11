@@ -23,6 +23,51 @@
   <p class="rounded-xl bg-muted px-3 py-2 text-muted-foreground">{{ t("cadastros.somente_leitura") }}</p>
   {% endif %}
 
+  {% if conteudo.filtros %}
+  <nav class="flex flex-wrap gap-2" aria-label="{{ t('cadastros.filtro') }}">
+    {% for valor_f, rotulo_f in conteudo.filtros %}
+    <a href="/cadastros/{{ aba }}/lista?filtro={{ valor_f|urlencode }}" data-chip="{{ valor_f }}"
+       hx-get="/cadastros/{{ aba }}/lista?filtro={{ valor_f|urlencode }}" hx-target="#aba-conteudo" hx-swap="outerHTML"
+       class="rounded-4xl border border-border px-3 py-1 text-xs {{ 'bg-primary text-primary-foreground' if valor_f == filtro else 'bg-card' }}">{{ rotulo_f }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
+  {% if conteudo.anos %}
+  <nav class="flex flex-wrap gap-2" aria-label="{{ t('cadastros.c_ano') }}">
+    {% for a in conteudo.anos %}
+    <a href="/cadastros/calendario/lista?ano={{ a }}" data-ano="{{ a }}"
+       hx-get="/cadastros/calendario/lista?ano={{ a }}" hx-target="#aba-conteudo" hx-swap="outerHTML"
+       class="rounded-4xl border border-border px-3 py-1 text-xs {{ 'bg-primary text-primary-foreground' if a == conteudo.ano else 'bg-card' }}">{{ a }}</a>
+    {% endfor %}
+  </nav>
+  {% if conteudo.sem_calendario and pode_editar %}
+  <form method="post" action="/cadastros/calendario/gerar" hx-post="/cadastros/calendario/gerar"
+        hx-target="#aba-conteudo" hx-swap="outerHTML">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="ano" value="{{ conteudo.ano }}">
+    <button type="submit" class="rounded-4xl bg-primary px-4 py-2 text-primary-foreground">{{ t("cadastros.criar_calendario", ano=conteudo.ano) }}</button>
+  </form>
+  {% endif %}
+  <ul class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {% for numero, nome_mes, horas_mes, bloqueio in conteudo.meses %}
+    <li class="rounded-2xl bg-card p-3 ring-1 ring-border">
+      <form method="post" action="/cadastros/calendario/ajustar" hx-post="/cadastros/calendario/ajustar"
+            hx-target="#aba-conteudo" hx-swap="outerHTML" class="flex flex-col gap-2">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="ano" value="{{ conteudo.ano }}"><input type="hidden" name="mes" value="{{ numero }}">
+        <label class="text-xs font-medium">{{ nome_mes }}
+          <input name="horas" inputmode="numeric" value="{{ horas_mes if horas_mes is not none }}"
+                 {{ "disabled" if bloqueio or not pode_editar }}
+                 class="mt-1 h-9 w-full rounded-4xl border border-input bg-background px-3 text-sm tabular-nums disabled:opacity-60">
+        </label>
+        {% if bloqueio %}<span class="text-2xs text-muted-foreground">{{ t("cadastros.bloqueio_" ~ bloqueio) }}</span>
+        {% elif pode_editar %}<button type="submit" class="rounded-4xl bg-secondary px-3 py-1 text-xs text-secondary-foreground">{{ t("cadastros.salvar") }}</button>{% endif %}
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
   {% if conteudo.paginada %}
   <form hx-get="/cadastros/{{ aba }}/lista" hx-target="#aba-conteudo" hx-swap="outerHTML" class="flex gap-2">
     <input type="search" name="q" value="{{ q }}" placeholder="{{ t('cadastros.buscar') }}"
@@ -31,6 +76,7 @@
   </form>
   {% endif %}
 
+  {% if not conteudo.meses %}
   <div class="overflow-x-auto rounded-2xl ring-1 ring-border">
     <table class="w-full text-left">
       <thead class="bg-muted text-muted-foreground">
@@ -66,18 +112,19 @@
       </tbody>
     </table>
   </div>
+  {% endif %}
 
   {% if conteudo.paginada and total_paginas > 1 %}
   <nav class="flex items-center justify-between" aria-label="{{ t('cadastros.pagina_de', pagina=pagina, total=total_paginas) }}">
     <span class="text-muted-foreground">{{ t("cadastros.pagina_de", pagina=pagina, total=total_paginas) }}</span>
     <span class="flex gap-2">
       {% if pagina > 1 %}
-      <a hx-get="/cadastros/{{ aba }}/lista?pagina={{ pagina - 1 }}&q={{ q|urlencode }}" hx-target="#aba-conteudo" hx-swap="outerHTML"
-         href="/cadastros/{{ aba }}/lista?pagina={{ pagina - 1 }}&q={{ q|urlencode }}" class="underline">{{ t("cadastros.anterior") }}</a>
+      <a hx-get="/cadastros/{{ aba }}/lista?pagina={{ pagina - 1 }}&q={{ q|urlencode }}&filtro={{ filtro|urlencode }}" hx-target="#aba-conteudo" hx-swap="outerHTML"
+         href="/cadastros/{{ aba }}/lista?pagina={{ pagina - 1 }}&q={{ q|urlencode }}&filtro={{ filtro|urlencode }}" class="underline">{{ t("cadastros.anterior") }}</a>
       {% endif %}
       {% if pagina < total_paginas %}
-      <a hx-get="/cadastros/{{ aba }}/lista?pagina={{ pagina + 1 }}&q={{ q|urlencode }}" hx-target="#aba-conteudo" hx-swap="outerHTML"
-         href="/cadastros/{{ aba }}/lista?pagina={{ pagina + 1 }}&q={{ q|urlencode }}" class="underline">{{ t("cadastros.proxima") }}</a>
+      <a hx-get="/cadastros/{{ aba }}/lista?pagina={{ pagina + 1 }}&q={{ q|urlencode }}&filtro={{ filtro|urlencode }}" hx-target="#aba-conteudo" hx-swap="outerHTML"
+         href="/cadastros/{{ aba }}/lista?pagina={{ pagina + 1 }}&q={{ q|urlencode }}&filtro={{ filtro|urlencode }}" class="underline">{{ t("cadastros.proxima") }}</a>
       {% endif %}
     </span>
   </nav>

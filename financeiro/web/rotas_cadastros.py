@@ -30,12 +30,22 @@ def _fragmento(
     pagina: int = 1,
     q: str = "",
     ano: IntOpcional = None,
+    filtro: str = "",
     ok: str | None = None,
     erro: str | None = None,
     status: int = 200,
 ) -> HTMLResponse:
     ano = ano or request.app.state.agora().year
-    conteudo = abas.montar(conexao, contexto.bd_id, aba, ano, _mes_atual(request))
+    conteudo = abas.montar(
+        conexao,
+        contexto.bd_id,
+        aba,
+        ano,
+        _mes_atual(request),
+        filtro,
+        request.app.state.agora(),
+        contexto.usuario.formato_valor,
+    )
     if conteudo.paginada:
         linhas, pagina, total = abas.paginar(conteudo.linhas, pagina, q)
     else:
@@ -50,6 +60,7 @@ def _fragmento(
         pagina=pagina,
         total_paginas=total,
         q=q,
+        filtro=filtro,
         ano=str(ano),
         csrf=contexto.csrf,
         pode_editar=contexto.papel in ("Admin", "Editor"),
@@ -82,13 +93,14 @@ def lista(
     pagina: int = 1,
     q: str = "",
     ano: IntOpcional = None,
+    filtro: str = "",
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
     _aba_valida(aba)
     if contexto.bd_id is None:
         raise HTTPException(status_code=409, detail=t("papel.sem_bd"))
-    return _fragmento(request, conexao, contexto, aba, pagina=pagina, q=q, ano=ano)
+    return _fragmento(request, conexao, contexto, aba, pagina=pagina, q=q, ano=ano, filtro=filtro)
 
 
 @roteador.post("/{aba}/{acao}")

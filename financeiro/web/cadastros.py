@@ -7,8 +7,11 @@ uma função `(conexao, bd_id, dados, mes_atual) -> chave do aviso` que levanta 
 import datetime as dt
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 
-from financeiro import calendario, custo, i18n, organizacao, vigencia
+from markupsafe import Markup, escape
+
+from financeiro import calendario, cenarios, custo, equipe, i18n, organizacao, realizado, vigencia
 from financeiro.store import (
     Conexao,
     ErroDeIntegridade,
@@ -18,7 +21,10 @@ from financeiro.store import (
     portfolio,
 )
 from financeiro.store import calendario as armazem_calendario
+from financeiro.store import cenarios as armazem_cenarios
+from financeiro.store import compras as armazem_compras
 from financeiro.store import organizacao as arvore_org
+from financeiro.web.templates import valor_html
 
 ABAS = (
     "organizacao",
@@ -80,6 +86,11 @@ class Aba:
     acoes_linha: list[AcaoLinha] = field(default_factory=list)
     paginada: bool = True
     nota: str | None = None
+    filtros: list[tuple[str, str]] = field(default_factory=list)  # (valor, rótulo) dos chips
+    anos: list[int] = field(default_factory=list)  # chips de ano (calendário)
+    sem_calendario: bool = False
+    meses: list[tuple] = field(default_factory=list)  # calendário: (nº, nome, horas, bloqueio)
+    ano: int = 0
 
 
 # ---------- leitura dos campos do formulário ----------
@@ -449,7 +460,7 @@ def _pesquisa(linhas, termo: str):
     termo = termo.strip().lower()
     if not termo:
         return linhas
-    return [linha for linha in linhas if termo in " ".join(linha[1]).lower()]
+    return [linha for linha in linhas if termo in " ".join(str(c) for c in linha[1]).lower()]
 
 
 def _montar_base(conexao: Conexao, bd_id: int, aba: str, ano: int, mes_atual: str) -> Aba:
@@ -858,9 +869,206 @@ def _montar_base(conexao: Conexao, bd_id: int, aba: str, ano: int, mes_atual: st
     raise KeyError(aba)
 
 
-def montar(conexao: Conexao, bd_id: int, aba: str, ano: int, mes_atual: str) -> Aba:
-    """A aba com os formulários de edição de campo (tipo, nível, iniciativa, markup…)."""
+def _filtrar(conteudo: Aba, aba: str, filtro: str, conexao: Conexao, bd_id: int) -> None:
+    """Chips de filtro por aba (como no protótipo) e a aplicação do filtro às linhas."""
+    s = i18n.t
+    todos = ("", s("cadastros.filtro_todos"))
+    if aba == "organizacao":
+        conteudo.filtros = [todos, ("Tribo", "Tribo"), ("Squad", "Squad")]
+        indice, alvo = 0, filtro
+    elif aba == "demandas":
+        conteudo.filtros = [todos, *[(t, t) for t in TIPOS_DEMANDA]]
+        indice, alvo = 3, filtro
+    elif aba == "vagas":
+        estados = ("aberta", "preenchida", "cancelada")
+        conteudo.filtros = [todos, *[(e, s(f"cadastros.estado_{e}")) for e in estados]]
+        indice, alvo = 5, (s(f"cadastros.estado_{filtro}") if filtro in estados else "")
+    elif aba == "temas":
+        agr = portfolio.listar_agrupamentos(conexao, bd_id)
+        conteudo.filtros = [todos, *[(str(a.id), a.nome) for a in agr]]
+        indice, alvo = 4, next((a.nome for a in agr if str(a.id) == filtro), "")
+    elif aba == "cargos":
+        emp = cadastros.listar_empresas(conexao, bd_id)
+        conteudo.filtros = [todos, *[(str(e.id), e.nome) for e in emp]]
+        indice, alvo = 0, next((e.nome for e in emp if str(e.id) == filtro), "")
+    else:
+        return
+    if alvo:
+        conteudo.linhas = [x for x in conteudo.linhas if str(x[1][indice]) == alvo]
+
+
+def _acrescentar(conteudo: Aba, colunas: list[str], extras) -> None:
+    """Põe colunas no fim: `extras(id_do_registro, células)` devolve as células novas."""
+    conteudo.colunas = [*conteudo.colunas, *colunas]
+    conteudo.linhas = [
+        (registro, [*celulas, *extras(registro, celulas)], texto, *resto)
+        for registro, celulas, texto, *resto in conteudo.linhas
+    ]
+
+
+def _indicadores(
+    conteudo: Aba, aba: str, conexao: Conexao, bd_id: int, ano: int, agora: datetime, formato: str
+) -> None:
+    """Colunas de indicador por item: orçamento e consumo, contagens e custo da unidade."""
+
+    def v(centavos: int | None):
+        return valor_html(centavos, formato)
+
+    def consumo(dimensao: str) -> dict:
+        tabela = realizado.consultar(conexao, bd_id, ano, dimensao, "todas", "bruto", agora)
+        return {linha.chave: linha for linha in tabela.linhas}
+
+    mes = agora.strftime("%Y-%m")
+    if aba == "iniciativas":
+        por_id = consumo("iniciativa")
+
+        def extras(registro, _):
+            r = por_id.get(registro)
+            if r is None:
+                return [v(None), v(0), v(0), "—", "—"]
+            pct = f"{r.total_ano * 100 // r.orcamento}%" if r.orcamento else "—"
+            return [v(r.orcamento), v(r.realizado), v(r.forecast), v(r.gap), pct]
+
+        _acrescentar(conteudo, ["budget", "realizado", "forecast", "saldo", "consumido"], extras)
+    elif aba in ("demandas", "temas"):
+        por_id = consumo("demanda" if aba == "demandas" else "tema")
+        temas_por_demanda: dict[int, int] = {}
+        ordens: dict[int, int] = {}
+        if aba == "demandas":
+            for t in portfolio.listar_temas(conexao, bd_id):
+                temas_por_demanda[t.demanda_id] = temas_por_demanda.get(t.demanda_id, 0) + 1
+            for c in armazem_compras.listar_compras(conexao, bd_id):
+                if c.status != "cancelada":
+                    ordens[c.demanda_id] = ordens.get(c.demanda_id, 0) + 1
+
+        def extras(registro, _):
+            r = por_id.get(registro)
+            base = [v(r.realizado if r else 0), v(r.forecast if r else 0)]
+            if aba == "demandas":
+                base += [temas_por_demanda.get(registro, 0), ordens.get(registro, 0)]
+            return base
+
+        colunas = ["realizado", "forecast"] + (["temas", "ordens"] if aba == "demandas" else [])
+        _acrescentar(conteudo, colunas, extras)
+    elif aba == "organizacao":
+        por_tribo, por_squad = consumo("tribo"), consumo("squad")
+        orgs = arvore_org.listar_orgs(conexao, bd_id)
+        pessoas_mes = equipe.listar(conexao, bd_id, mes, mes, agora)
+        nomes_filhos = {o.id: {x.nome for x in orgs if x.pai_id == o.id} for o in orgs}
+
+        def extras(registro, celulas):
+            if celulas[0] == "Tribo":
+                unidades = {celulas[1], *nomes_filhos.get(registro, set())}
+                custo_org = por_tribo.get(registro)
+            else:
+                unidades = {celulas[1]}
+                custo_org = por_squad.get(registro)
+            n = sum(1 for p in pessoas_mes if p.unidade in unidades)
+            return [n, v(custo_org.total_ano if custo_org else 0)]
+
+        _acrescentar(conteudo, ["pessoas", "custo"], extras)
+    elif aba == "empresas":
+        cargos = cadastros.listar_cargos(conexao, bd_id)
+        ativos = equipe.listar(conexao, bd_id, mes, mes, agora)
+        nomes_por_id = {e.id: e.nome for e in cadastros.listar_empresas(conexao, bd_id)}
+
+        def extras(registro, _):
+            nome = nomes_por_id.get(registro)
+            return [
+                sum(1 for c in cargos if c.empresa_id == registro),
+                sum(1 for p in ativos if p.empresa == nome),
+            ]
+
+        _acrescentar(conteudo, ["cargos", "pessoas_ativas"], extras)
+    elif aba == "agrupamentos":
+        temas = portfolio.listar_temas(conexao, bd_id)
+        _acrescentar(
+            conteudo,
+            ["temas"],
+            lambda registro, _: [sum(1 for t in temas if t.agrupamento_id == registro)],
+        )
+    elif aba == "fornecedores":
+        ativas = [
+            c for c in armazem_compras.listar_compras(conexao, bd_id) if c.status != "cancelada"
+        ]
+        _acrescentar(
+            conteudo,
+            ["ordens_ativas"],
+            lambda registro, _: [sum(1 for c in ativas if c.fornecedor_id == registro)],
+        )
+    elif aba == "vagas":
+        todos = cenarios.listar(conexao, bd_id)
+        inicios = {c.id: armazem_cenarios.inicios_de_vaga(conexao, bd_id, c.id) for c in todos}
+
+        def extras(registro, _):
+            partes = []
+            for c in todos:
+                inicio = inicios[c.id].get(registro)
+                if inicio:
+                    partes.append(f"{c.nome} {i18n.mes(int(inicio[:4]), int(inicio[5:]))}")
+            return [" · ".join(partes) or "—"]
+
+        _acrescentar(conteudo, ["inicio_cenario"], extras)
+
+
+def _historico_recolhido(conteudo: Aba) -> None:
+    """Na organização, o histórico de vigências vira um bloco recolhido."""
+    titulo = i18n.t("cadastros.historico_vigencias")
+    linhas = []
+    for registro, celulas, texto, *resto in conteudo.linhas:
+        historico = celulas[5]
+        if historico != "—":
+            partes = "".join(f"<li>{escape(x)}</li>" for x in historico.split(" · "))
+            celulas = [
+                *celulas[:5],
+                Markup(
+                    f"<details><summary>{escape(titulo)}</summary>"
+                    f'<ul class="mt-1 text-xs">{partes}</ul></details>'
+                ),
+            ]
+        linhas.append((registro, celulas, texto, *resto))
+    conteudo.linhas = linhas
+
+
+def _meses_do_calendario(
+    conexao: Conexao, bd_id: int, ano: int, mes_atual: str
+) -> list[tuple[int, str, int | None, str | None]]:
+    """(número, nome, horas, bloqueio) de cada mês; passado e com carga não aceitam ajuste."""
+    saida = []
+    for m in range(1, 13):
+        alvo = f"{ano:04d}-{m:02d}"
+        if alvo < mes_atual:
+            motivo = "passado"
+        elif armazem_calendario.mes_tem_carga(conexao, bd_id, alvo):
+            motivo = "carga"
+        else:
+            motivo = None
+        saida.append((m, i18n.mes(ano, m), calendario.horas_do_mes(conexao, bd_id, ano, m), motivo))
+    return saida
+
+
+def montar(
+    conexao: Conexao,
+    bd_id: int,
+    aba: str,
+    ano: int,
+    mes_atual: str,
+    filtro: str = "",
+    agora: datetime | None = None,
+    formato: str = "mil",
+) -> Aba:
+    """A aba com os formulários de edição, os chips de filtro e os indicadores por item."""
+    agora = agora or datetime.now()
     conteudo = _montar_base(conexao, bd_id, aba, ano, mes_atual)
+    _indicadores(conteudo, aba, conexao, bd_id, ano, agora, formato)
+    _filtrar(conteudo, aba, filtro, conexao, bd_id)
+    if aba == "organizacao":
+        _historico_recolhido(conteudo)
+    if aba == "calendario":
+        conteudo.anos = sorted({agora.year, agora.year + 1, ano})
+        conteudo.ano = ano
+        conteudo.meses = _meses_do_calendario(conexao, bd_id, ano, mes_atual)
+        conteudo.sem_calendario = all(m[2] is None for m in conteudo.meses)
     s = i18n.t
     if aba == "empresas":
         ops = _opcoes(cadastros.listar_empresas(conexao, bd_id), lambda x: x.id, lambda x: x.nome)

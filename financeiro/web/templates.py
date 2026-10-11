@@ -16,18 +16,22 @@ from financeiro import i18n
 PASTA = Path(__file__).parent / "templates"
 
 
-@pass_context
-def valor(contexto, centavos: int | None) -> Markup:
+def valor_html(centavos: int | None, formato: str) -> Markup:
     """Valor na preferência do usuário (mil ou mi), com o valor exato no tooltip."""
     if centavos is None:
         return Markup("—")
+    exato = escape(i18n.moeda(centavos))
+    curto = escape(i18n.valor_abreviado(centavos, formato))
+    return Markup(f'<span class="tabular-nums" title="{exato}">{curto}</span>')
+
+
+@pass_context
+def valor(contexto, centavos: int | None) -> Markup:
     formato = contexto.get("formato")
     if formato is None:
         usuario = contexto.get("usuario")
         formato = getattr(usuario, "formato_valor", "mil")
-    exato = escape(i18n.moeda(centavos))
-    curto = escape(i18n.valor_abreviado(centavos, formato))
-    return Markup(f'<span class="tabular-nums" title="{exato}">{curto}</span>')
+    return valor_html(centavos, formato)
 
 
 @cache
