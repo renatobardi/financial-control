@@ -123,7 +123,7 @@ def test_desfazer_carga_e_remover_membro_pedem_confirmacao(ambiente):
     )  # fmt: skip
 
     relatorio = ambiente.cliente.get("/cargas/1").text
-    config = ambiente.cliente.get("/configuracoes").text
+    config = ambiente.cliente.get("/configuracoes?aba=membros").text
 
     desfazer = re.search(r'<form[^>]*/desfazer"[^>]*>', relatorio)
     remover = re.search(r'<form[^>]*/remover"[^>]*>', config)

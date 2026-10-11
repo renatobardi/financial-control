@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
-from financeiro import membros, senha, store
+from financeiro import autenticacao, membros, senha, store
 from financeiro.i18n import t
 from financeiro.store import acesso
+from financeiro.web.rotas_acesso import NOME_COOKIE
 from financeiro.web.sessao import (
     Contexto,
     conexao_db,
@@ -30,18 +31,22 @@ TELAS = (
 )
 PAPEIS = ("Admin", "Editor", "Leitor")
 SENHA_MINIMA = 8
+ABAS = ("perfil", "bds", "membros", "conta")
 
 
 def _pagina(
     conexao: store.Conexao,
     contexto: Contexto,
     *,
+    aba: str = "perfil",
     ok: str | None = None,
     erro: str | None = None,
     status: int = 200,
 ) -> HTMLResponse:
     usuario = acesso.achar_usuario(conexao, contexto.usuario.id) or contexto.usuario
     eh_admin = contexto.papel == "Admin" and contexto.bd_id is not None
+    if aba not in ABAS or (aba == "membros" and not eh_admin):
+        aba = "perfil"
     pedidos = [
         (acesso.nome_do_bd(conexao, p.bd_id), p.motivo, p.estado)
         for p in acesso.pedidos_do_usuario(conexao, usuario.id)
@@ -58,6 +63,10 @@ def _pagina(
         sem_vinculo=acesso.bds_sem_vinculo(conexao, usuario.id),
         meus_pedidos=pedidos,
         eh_admin=eh_admin,
+        aba=aba,
+        abas=[a for a in ABAS if a != "membros" or eh_admin],
+        ultimo_admin_em=set(acesso.bds_em_que_e_ultimo_admin(conexao, usuario.id)),
+        usuario_id=usuario.id,
         membros=acesso.membros_do_bd(conexao, contexto.bd_id) if eh_admin else [],
         pedidos_abertos=acesso.pedidos_abertos(conexao, contexto.bd_id) if eh_admin else [],
         temas=TEMAS,
@@ -71,9 +80,11 @@ def _pagina(
 
 @roteador.get("")
 def configuracoes(
-    contexto: Contexto = Depends(exigir_sessao), conexao: store.Conexao = Depends(conexao_db)
+    aba: str = "perfil",
+    contexto: Contexto = Depends(exigir_sessao),
+    conexao: store.Conexao = Depends(conexao_db),
 ):
-    return _pagina(conexao, contexto)
+    return _pagina(conexao, contexto, aba=aba)
 
 
 @roteador.post("/perfil")
@@ -83,9 +94,9 @@ def salvar_perfil(
     conexao: store.Conexao = Depends(conexao_db),
 ):
     if not nome.strip():
-        return _pagina(conexao, contexto, erro=t("conta.erro_nome"), status=400)
+        return _pagina(conexao, contexto, aba="perfil", erro=t("conta.erro_nome"), status=400)
     acesso.atualizar_perfil(conexao, contexto.usuario.id, nome.strip())
-    return _pagina(conexao, contexto, ok=t("configuracoes.ok_perfil"))
+    return _pagina(conexao, contexto, aba="perfil", ok=t("configuracoes.ok_perfil"))
 
 
 @roteador.post("/senha")
@@ -98,13 +109,19 @@ def alterar_senha(
 ):
     usuario = acesso.achar_usuario(conexao, contexto.usuario.id)
     if usuario is None or not senha.verificar(atual, usuario.senha_hash):
-        return _pagina(conexao, contexto, erro=t("configuracoes.erro_senha_atual"), status=400)
+        return _pagina(
+            conexao, contexto, aba="perfil", erro=t("configuracoes.erro_senha_atual"), status=400
+        )
     if len(nova) < SENHA_MINIMA:
-        return _pagina(conexao, contexto, erro=t("conta.erro_senha_curta"), status=400)
+        return _pagina(
+            conexao, contexto, aba="perfil", erro=t("conta.erro_senha_curta"), status=400
+        )
     if nova != confirmar:
-        return _pagina(conexao, contexto, erro=t("conta.erro_senha_diferente"), status=400)
+        return _pagina(
+            conexao, contexto, aba="perfil", erro=t("conta.erro_senha_diferente"), status=400
+        )
     acesso.definir_senha(conexao, usuario.id, senha.gerar_hash(nova))
-    return _pagina(conexao, contexto, ok=t("configuracoes.ok_senha"))
+    return _pagina(conexao, contexto, aba="perfil", ok=t("configuracoes.ok_senha"))
 
 
 @roteador.post("/preferencias")
@@ -124,11 +141,13 @@ def salvar_preferencias(
         and (padrao is None or acesso.papel_do(conexao, padrao, contexto.usuario.id) is not None)
     )
     if not valido:
-        return _pagina(conexao, contexto, erro=t("configuracoes.erro_preferencia"), status=400)
+        return _pagina(
+            conexao, contexto, aba="perfil", erro=t("configuracoes.erro_preferencia"), status=400
+        )
     acesso.atualizar_preferencias(
         conexao, contexto.usuario.id, tema, formato_valor, tela_inicial, padrao
     )
-    return _pagina(conexao, contexto, ok=t("configuracoes.ok_preferencias"))
+    return _pagina(conexao, contexto, aba="perfil", ok=t("configuracoes.ok_preferencias"))
 
 
 @roteador.post("/pedido")
@@ -142,10 +161,12 @@ def pedir_acesso(
     alvo = int(bd_id) if bd_id.isdigit() else None
     permitido = {b.id for b in acesso.bds_sem_vinculo(conexao, contexto.usuario.id)}
     if alvo not in permitido or not motivo.strip():
-        return _pagina(conexao, contexto, erro=t("configuracoes.erro_pedido"), status=400)
+        return _pagina(
+            conexao, contexto, aba="bds", erro=t("configuracoes.erro_pedido"), status=400
+        )
     agora = request.app.state.agora().strftime("%Y-%m-%dT%H:%M:%SZ")
     acesso.criar_pedido(conexao, alvo, contexto.usuario.id, motivo.strip(), agora)
-    return _pagina(conexao, contexto, ok=t("configuracoes.ok_pedido"))
+    return _pagina(conexao, contexto, aba="bds", ok=t("configuracoes.ok_pedido"))
 
 
 @roteador.post("/convites")
@@ -157,9 +178,13 @@ def convidar(
 ):
     email = email.strip()
     if "@" not in email or papel not in PAPEIS:
-        return _pagina(conexao, contexto, erro=t("configuracoes.erro_convite"), status=400)
+        return _pagina(
+            conexao, contexto, aba="membros", erro=t("configuracoes.erro_convite"), status=400
+        )
     acesso.convidar(conexao, contexto.bd_id, email, papel)
-    return _pagina(conexao, contexto, ok=t("configuracoes.ok_convite", email=email, papel=papel))
+    return _pagina(
+        conexao, contexto, aba="membros", ok=t("configuracoes.ok_convite", email=email, papel=papel)
+    )
 
 
 def _membro_ou_404(conexao: store.Conexao, contexto: Contexto, usuario_id: int) -> None:
@@ -176,12 +201,16 @@ def alterar_papel(
 ):
     _membro_ou_404(conexao, contexto, usuario_id)
     if papel not in PAPEIS:
-        return _pagina(conexao, contexto, erro=t("configuracoes.erro_convite"), status=400)
+        return _pagina(
+            conexao, contexto, aba="membros", erro=t("configuracoes.erro_convite"), status=400
+        )
     try:
         membros.alterar_papel(conexao, contexto.bd_id, usuario_id, papel)
     except membros.UltimoAdmin:
-        return _pagina(conexao, contexto, erro=t("configuracoes.erro_ultimo_admin"), status=409)
-    return _pagina(conexao, contexto, ok=t("configuracoes.ok_membro"))
+        return _pagina(
+            conexao, contexto, aba="membros", erro=t("configuracoes.erro_ultimo_admin"), status=409
+        )
+    return _pagina(conexao, contexto, aba="membros", ok=t("configuracoes.ok_membro"))
 
 
 @roteador.post("/membros/{usuario_id}/remover")
@@ -194,8 +223,10 @@ def remover_membro(
     try:
         membros.remover(conexao, contexto.bd_id, usuario_id)
     except membros.UltimoAdmin:
-        return _pagina(conexao, contexto, erro=t("configuracoes.erro_ultimo_admin"), status=409)
-    return _pagina(conexao, contexto, ok=t("configuracoes.ok_removido"))
+        return _pagina(
+            conexao, contexto, aba="membros", erro=t("configuracoes.erro_ultimo_admin"), status=409
+        )
+    return _pagina(conexao, contexto, aba="membros", ok=t("configuracoes.ok_removido"))
 
 
 @roteador.post("/pedidos/{pedido_id}/aprovar")
@@ -206,14 +237,20 @@ def aprovar_pedido(
     conexao: store.Conexao = Depends(conexao_db),
 ):
     if papel not in PAPEIS:
-        return _pagina(conexao, contexto, erro=t("configuracoes.erro_convite"), status=400)
+        return _pagina(
+            conexao, contexto, aba="bds", erro=t("configuracoes.erro_convite"), status=400
+        )
     try:
         membros.aprovar_pedido(conexao, contexto.bd_id, pedido_id, papel)
     except membros.PedidoInexistente:
         return _pagina(
-            conexao, contexto, erro=t("configuracoes.erro_pedido_inexistente"), status=404
+            conexao,
+            contexto,
+            aba="bds",
+            erro=t("configuracoes.erro_pedido_inexistente"),
+            status=404,
         )
-    return _pagina(conexao, contexto, ok=t("configuracoes.ok_aprovado"))
+    return _pagina(conexao, contexto, aba="bds", ok=t("configuracoes.ok_aprovado"))
 
 
 @roteador.post("/pedidos/{pedido_id}/recusar")
@@ -226,6 +263,80 @@ def recusar_pedido(
         membros.recusar_pedido(conexao, contexto.bd_id, pedido_id)
     except membros.PedidoInexistente:
         return _pagina(
-            conexao, contexto, erro=t("configuracoes.erro_pedido_inexistente"), status=404
+            conexao,
+            contexto,
+            aba="bds",
+            erro=t("configuracoes.erro_pedido_inexistente"),
+            status=404,
         )
-    return _pagina(conexao, contexto, ok=t("configuracoes.ok_recusado"))
+    return _pagina(conexao, contexto, aba="bds", ok=t("configuracoes.ok_recusado"))
+
+
+def _bd_do_usuario(conexao: store.Conexao, contexto: Contexto, bd_id: int) -> str:
+    papel = acesso.papel_do(conexao, bd_id, contexto.usuario.id)
+    if papel is None:
+        raise HTTPException(status_code=404, detail=t("configuracoes.erro_membro"))
+    return papel
+
+
+@roteador.post("/bds/{bd_id}/padrao")
+def tornar_padrao(
+    bd_id: int,
+    contexto: Contexto = Depends(exigir_csrf),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    _bd_do_usuario(conexao, contexto, bd_id)
+    usuario = acesso.achar_usuario(conexao, contexto.usuario.id)
+    acesso.atualizar_preferencias(
+        conexao, usuario.id, usuario.tema, usuario.formato_valor, usuario.tela_inicial, bd_id
+    )
+    return _pagina(conexao, contexto, aba="bds", ok=t("configuracoes.ok_padrao"))
+
+
+@roteador.post("/bds/{bd_id}/sair")
+def sair_do_bd(
+    bd_id: int,
+    contexto: Contexto = Depends(exigir_csrf),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    _bd_do_usuario(conexao, contexto, bd_id)
+    try:
+        membros.remover(conexao, bd_id, contexto.usuario.id)
+    except membros.UltimoAdmin:
+        return _pagina(
+            conexao, contexto, aba="bds", erro=t("configuracoes.erro_ultimo_admin"), status=409
+        )
+    usuario = acesso.achar_usuario(conexao, contexto.usuario.id)
+    if usuario.bd_padrao_id == bd_id:
+        acesso.atualizar_preferencias(
+            conexao, usuario.id, usuario.tema, usuario.formato_valor, usuario.tela_inicial, None
+        )
+    if contexto.bd_id == bd_id:  # saiu do BD em uso: volta à escolha de BD
+        autenticacao.escolher_bd(conexao, contexto.token, None)
+        return RedirectResponse("/bds", status_code=303)
+    return _pagina(conexao, contexto, aba="bds", ok=t("configuracoes.ok_saiu"))
+
+
+@roteador.post("/conta/excluir")
+def excluir_conta(
+    confirmar: str = Form(""),
+    contexto: Contexto = Depends(exigir_csrf),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    usuario = acesso.achar_usuario(conexao, contexto.usuario.id)
+    if confirmar.strip().lower() != usuario.email.lower():
+        return _pagina(
+            conexao, contexto, aba="conta", erro=t("configuracoes.erro_confirmar_conta"), status=400
+        )
+    if acesso.bds_em_que_e_ultimo_admin(conexao, usuario.id):
+        return _pagina(
+            conexao,
+            contexto,
+            aba="conta",
+            erro=t("configuracoes.erro_conta_ultimo_admin"),
+            status=409,
+        )
+    acesso.excluir_conta(conexao, usuario.id)
+    resposta = RedirectResponse("/login", status_code=303)
+    resposta.delete_cookie(NOME_COOKIE, path="/")
+    return resposta

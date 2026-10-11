@@ -255,3 +255,32 @@ def achar_bd_por_nome(conexao: sqlite3.Connection, nome: str) -> int | None:
 
 def contar_usuarios(conexao: sqlite3.Connection) -> int:
     return conexao.execute("SELECT COUNT(*) FROM usuario").fetchone()[0]
+
+
+@entre_bds
+def excluir_conta(conexao: sqlite3.Connection, usuario_id: int) -> None:
+    """Encerra a conta: tira vínculos, pedidos e sessões e anonimiza o usuário.
+
+    O registro fica (o histórico de fechamento, carga e compras aponta para ele), mas sem
+    e-mail, senha nem nome: ninguém consegue entrar de novo com ele.
+    """
+    conexao.execute("DELETE FROM membro WHERE usuario_id = ?", (usuario_id,))
+    conexao.execute("DELETE FROM pedido_acesso WHERE usuario_id = ?", (usuario_id,))
+    conexao.execute("DELETE FROM sessao WHERE usuario_id = ?", (usuario_id,))
+    conexao.execute(
+        "UPDATE usuario SET email = ?, nome = ?, senha_hash = NULL, bd_padrao_id = NULL"
+        " WHERE id = ?",
+        (f"excluida-{usuario_id}@invalido", "Conta excluída", usuario_id),
+    )
+    conexao.commit()
+
+
+@entre_bds
+def bds_em_que_e_ultimo_admin(conexao: sqlite3.Connection, usuario_id: int) -> list[int]:
+    """BDs onde o usuário é o único Admin: ele não pode sair nem excluir a conta."""
+    linhas = conexao.execute(
+        "SELECT m.bd_id FROM membro m WHERE m.usuario_id = ? AND m.papel = 'Admin'"
+        " AND (SELECT COUNT(*) FROM membro x WHERE x.bd_id = m.bd_id AND x.papel = 'Admin') = 1",
+        (usuario_id,),
+    ).fetchall()
+    return [x[0] for x in linhas]

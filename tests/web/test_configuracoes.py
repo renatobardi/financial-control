@@ -213,7 +213,7 @@ def test_pedido_de_acesso_aprovado_da_o_papel(ambiente):
     # Ana (Admin do O1) aprova
     ambiente.cliente.cookies.clear()
     entrar(ambiente)
-    pagina = ambiente.cliente.get("/configuracoes").text
+    pagina = ambiente.cliente.get("/configuracoes?aba=membros").text
     assert "preciso ver o PDD" in pagina
     pedido_id = acesso.pedidos_abertos(ambiente.conexao, bd_o1)[0].id
 
