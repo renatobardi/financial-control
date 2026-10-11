@@ -124,6 +124,47 @@
 
   {% endif %}
 
+  {% if aba == "sessoes" %}
+  {% call card("configuracoes.sessoes_titulo") %}
+    <p class="mb-3 text-muted-foreground">{{ t("configuracoes.sessoes_sub") }}</p>
+    <div class="mb-4 overflow-x-auto rounded-2xl ring-1 ring-border">
+      <table class="w-full text-left">
+        <thead class="bg-muted text-muted-foreground">
+          <tr>
+            <th class="px-3 py-2 font-medium">{{ t("configuracoes.sessao_dispositivo") }}</th>
+            <th class="px-3 py-2 font-medium">{{ t("configuracoes.sessao_ip") }}</th>
+            <th class="px-3 py-2 font-medium">{{ t("configuracoes.sessao_inicio") }}</th>
+            <th class="px-3 py-2"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sessoes %}
+          <tr class="border-t border-border">
+            <td class="px-3 py-2">{{ s.agente or "—" }}{% if s.atual %} {{ badge("configuracoes.sessao_atual") }}{% endif %}</td>
+            <td class="px-3 py-2 tabular-nums">{{ s.ip or "—" }}</td>
+            <td class="px-3 py-2">{{ data_hora(s.criada_em) }}</td>
+            <td class="px-3 py-2 text-right">
+              {% if not s.atual %}
+              <form method="post" action="/configuracoes/sessoes/{{ s.id }}/encerrar" hx-confirm="{{ t('confirmar.encerrar_sessao') }}">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                {{ botao("configuracoes.sessao_encerrar", tipo="submit", tom="secundario") }}
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if sessoes|length > 1 %}
+    <form method="post" action="/configuracoes/sessoes/encerrar-outras" hx-confirm="{{ t('confirmar.encerrar_outras') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {{ botao("configuracoes.sessoes_encerrar_outras", tipo="submit", tom="secundario") }}
+    </form>
+    {% endif %}
+  {% endcall %}
+  {% endif %}
+
   {% if aba == "membros" and eh_admin %}
   {% call card("configuracoes.admin_titulo") %}
     <p class="mb-3 text-muted-foreground">{{ t("configuracoes.admin_sub") }}</p>

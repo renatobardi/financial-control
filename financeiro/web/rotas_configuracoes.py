@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
@@ -31,7 +33,7 @@ TELAS = (
 )
 PAPEIS = ("Admin", "Editor", "Leitor")
 SENHA_MINIMA = 8
-ABAS = ("perfil", "bds", "membros", "conta")
+ABAS = ("perfil", "bds", "sessoes", "membros", "conta")
 
 
 def _pagina(
@@ -39,6 +41,7 @@ def _pagina(
     contexto: Contexto,
     *,
     aba: str = "perfil",
+    agora: datetime | None = None,
     ok: str | None = None,
     erro: str | None = None,
     status: int = 200,
@@ -64,6 +67,7 @@ def _pagina(
         meus_pedidos=pedidos,
         eh_admin=eh_admin,
         aba=aba,
+        sessoes=_sessoes(conexao, contexto, agora) if aba == "sessoes" else [],
         abas=[a for a in ABAS if a != "membros" or eh_admin],
         ultimo_admin_em=set(acesso.bds_em_que_e_ultimo_admin(conexao, usuario.id)),
         usuario_id=usuario.id,
@@ -78,13 +82,29 @@ def _pagina(
     )
 
 
+def _sessoes(conexao: store.Conexao, contexto: Contexto, agora: datetime | None) -> list[dict]:
+    atual = autenticacao.hash_token(contexto.token)
+    abertas = autenticacao.sessoes_abertas(conexao, contexto.usuario.id, agora or datetime.now(UTC))
+    return [
+        {
+            "id": x.id,
+            "agente": x.agente or "",
+            "ip": x.ip or "",
+            "criada_em": x.criada_em,
+            "atual": x.token_hash == atual,
+        }
+        for x in abertas
+    ]
+
+
 @roteador.get("")
 def configuracoes(
+    request: Request,
     aba: str = "perfil",
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
-    return _pagina(conexao, contexto, aba=aba)
+    return _pagina(conexao, contexto, aba=aba, agora=request.app.state.agora())
 
 
 @roteador.post("/perfil")
@@ -340,3 +360,46 @@ def excluir_conta(
     resposta = RedirectResponse("/login", status_code=303)
     resposta.delete_cookie(NOME_COOKIE, path="/")
     return resposta
+
+
+@roteador.post("/sessoes/encerrar-outras")
+def encerrar_outras_sessoes(
+    request: Request,
+    contexto: Contexto = Depends(exigir_csrf),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    n = autenticacao.encerrar_outras(conexao, contexto.usuario.id, contexto.token)
+    return _pagina(
+        conexao,
+        contexto,
+        aba="sessoes",
+        agora=request.app.state.agora(),
+        ok=t("configuracoes.ok_sessoes_encerradas", n=n),
+    )
+
+
+@roteador.post("/sessoes/{sessao_id}/encerrar")
+def encerrar_sessao(
+    request: Request,
+    sessao_id: int,
+    contexto: Contexto = Depends(exigir_csrf),
+    conexao: store.Conexao = Depends(conexao_db),
+):
+    agora = request.app.state.agora()
+    abertas = autenticacao.sessoes_abertas(conexao, contexto.usuario.id, agora)
+    alvo = next((x for x in abertas if x.id == sessao_id), None)
+    if alvo is None:
+        raise HTTPException(status_code=404, detail=t("configuracoes.erro_sessao"))
+    if alvo.token_hash == autenticacao.hash_token(contexto.token):
+        return _pagina(
+            conexao,
+            contexto,
+            aba="sessoes",
+            agora=agora,
+            erro=t("configuracoes.erro_sessao_atual"),
+            status=400,
+        )
+    autenticacao.encerrar_sessao(conexao, contexto.usuario.id, sessao_id)
+    return _pagina(
+        conexao, contexto, aba="sessoes", agora=agora, ok=t("configuracoes.ok_sessao_encerrada")
+    )

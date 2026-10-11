@@ -8,6 +8,14 @@ class Sessao(NamedTuple):
     csrf: str
 
 
+class Aberta(NamedTuple):
+    id: int
+    criada_em: str
+    agente: str | None
+    ip: str | None
+    token_hash: str
+
+
 def criar(
     conexao: sqlite3.Connection,
     token_hash: str,
@@ -15,13 +23,42 @@ def criar(
     csrf: str,
     criada_em: str,
     expira_em: str,
+    agente: str | None = None,
+    ip: str | None = None,
 ) -> None:
     conexao.execute(
-        "INSERT INTO sessao (token_hash, usuario_id, csrf, criada_em, expira_em)"
-        " VALUES (?, ?, ?, ?, ?)",
-        (token_hash, usuario_id, csrf, criada_em, expira_em),
+        "INSERT INTO sessao (token_hash, usuario_id, csrf, criada_em, expira_em, agente, ip)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (token_hash, usuario_id, csrf, criada_em, expira_em, agente, ip),
     )
     conexao.commit()
+
+
+def abertas_do_usuario(conexao: sqlite3.Connection, usuario_id: int, agora: str) -> list[Aberta]:
+    """As sessões não expiradas do usuário, da mais recente para a mais antiga."""
+    linhas = conexao.execute(
+        "SELECT rowid, criada_em, agente, ip, token_hash FROM sessao"
+        " WHERE usuario_id = ? AND expira_em > ? ORDER BY criada_em DESC, rowid DESC",
+        (usuario_id, agora),
+    ).fetchall()
+    return [Aberta(*linha) for linha in linhas]
+
+
+def apagar_do_usuario(conexao: sqlite3.Connection, usuario_id: int, sessao_id: int) -> bool:
+    cursor = conexao.execute(
+        "DELETE FROM sessao WHERE rowid = ? AND usuario_id = ?", (sessao_id, usuario_id)
+    )
+    conexao.commit()
+    return cursor.rowcount > 0
+
+
+def apagar_outras(conexao: sqlite3.Connection, usuario_id: int, manter_token_hash: str) -> int:
+    cursor = conexao.execute(
+        "DELETE FROM sessao WHERE usuario_id = ? AND token_hash != ?",
+        (usuario_id, manter_token_hash),
+    )
+    conexao.commit()
+    return cursor.rowcount
 
 
 def achar(conexao: sqlite3.Connection, token_hash: str, agora: str) -> Sessao | None:
