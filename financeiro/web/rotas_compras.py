@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from financeiro import compras, i18n, store
 from financeiro.i18n import t
 from financeiro.store import portfolio
+from financeiro.web.parametros import IntOpcional
 from financeiro.web.sessao import Contexto, conexao_db, exigir_edicao, exigir_sessao
 from financeiro.web.templates import renderizar
 
@@ -21,7 +22,7 @@ def _lista(
     conexao: store.Conexao,
     contexto: Contexto,
     *,
-    ano: int | None = None,
+    ano: IntOpcional = None,
     busca: str = "",
     status_filtro: str = "",
     ok: str | None = None,
@@ -86,7 +87,7 @@ def _detalhe(
 @roteador.get("")
 def pagina(
     request: Request,
-    ano: int | None = None,
+    ano: IntOpcional = None,
     busca: str = "",
     status: str = "",
     contexto: Contexto = Depends(exigir_sessao),
@@ -108,7 +109,7 @@ def pagina(
 @roteador.get("/lista")
 def lista(
     request: Request,
-    ano: int | None = None,
+    ano: IntOpcional = None,
     busca: str = "",
     status: str = "",
     contexto: Contexto = Depends(exigir_sessao),

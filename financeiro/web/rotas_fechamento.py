@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from financeiro import fechamento, i18n, store, vigencia
 from financeiro.i18n import t
+from financeiro.web.parametros import IntOpcional
 from financeiro.web.sessao import Contexto, conexao_db, exigir_edicao, exigir_sessao
 from financeiro.web.templates import renderizar
 
@@ -48,7 +49,7 @@ def _grade(
 
 
 @roteador.get("")
-def pagina(request: Request, ano: int | None = None, contexto: Contexto = Depends(exigir_sessao)):
+def pagina(request: Request, ano: IntOpcional = None, contexto: Contexto = Depends(exigir_sessao)):
     if contexto.bd_id is None:
         return RedirectResponse("/bds", status_code=303)
     return renderizar(
@@ -64,7 +65,7 @@ def pagina(request: Request, ano: int | None = None, contexto: Contexto = Depend
 @roteador.get("/grade")
 def grade(
     request: Request,
-    ano: int | None = None,
+    ano: IntOpcional = None,
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
@@ -84,7 +85,7 @@ def _mes_valido(mes: str) -> str:
 def fechar(
     request: Request,
     mes: str,
-    ano: int | None = Form(None),
+    ano: IntOpcional = Form(None),
     contexto: Contexto = Depends(exigir_edicao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
@@ -105,7 +106,7 @@ def reabrir(
     request: Request,
     mes: str,
     motivo: str = Form(""),
-    ano: int | None = Form(None),
+    ano: IntOpcional = Form(None),
     contexto: Contexto = Depends(exigir_edicao),
     conexao: store.Conexao = Depends(conexao_db),
 ):

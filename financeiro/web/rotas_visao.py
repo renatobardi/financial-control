@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 
 from financeiro import cenarios, graficos, i18n, orcamento, realizado, store, visao_geral
 from financeiro.i18n import t
+from financeiro.web.parametros import IntOpcional
 from financeiro.web.sessao import Contexto, conexao_db, exigir_sessao
 from financeiro.web.templates import renderizar
 
@@ -51,9 +52,9 @@ def _renderizar(
 @roteador.get("/kpis")
 def kpis(
     request: Request,
-    cenario: int | None = None,
+    cenario: IntOpcional = None,
     base: str = "bruto",
-    rev: int | None = None,
+    rev: IntOpcional = None,
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
@@ -63,9 +64,9 @@ def kpis(
 @roteador.get("/alertas")
 def alertas(
     request: Request,
-    cenario: int | None = None,
+    cenario: IntOpcional = None,
     base: str = "bruto",
-    rev: int | None = None,
+    rev: IntOpcional = None,
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
@@ -75,9 +76,9 @@ def alertas(
 @roteador.get("/curva")
 def curva(
     request: Request,
-    cenario: int | None = None,
+    cenario: IntOpcional = None,
     base: str = "bruto",
-    rev: int | None = None,
+    rev: IntOpcional = None,
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
@@ -97,9 +98,9 @@ def curva(
 @roteador.get("/risco")
 def risco(
     request: Request,
-    cenario: int | None = None,
+    cenario: IntOpcional = None,
     base: str = "bruto",
-    rev: int | None = None,
+    rev: IntOpcional = None,
     contexto: Contexto = Depends(exigir_sessao),
     conexao: store.Conexao = Depends(conexao_db),
 ):
