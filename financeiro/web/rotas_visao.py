@@ -40,6 +40,7 @@ def _renderizar(
     )
     return renderizar(
         f"visao/_{nome}.html",
+        formato=contexto.usuario.formato_valor,
         v=v,
         cenario=cenario,
         base=base,

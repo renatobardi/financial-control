@@ -1,3 +1,4 @@
+{% from "_macros.html" import cartao, selo %}
 <div id="compras" class="flex flex-col gap-4">
   {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
   {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
@@ -20,9 +21,9 @@
   </form>
 
   <dl class="grid grid-cols-3 gap-3">
-    {% for rotulo, valor in [("compras.kpi_realizado", moeda(realizado)), ("compras.kpi_forecast", moeda(forecast)), ("compras.kpi_previstas", previstas)] %}
-    <div class="rounded-xl bg-muted p-3"><dt class="text-xs text-muted-foreground">{{ t(rotulo) }}</dt><dd class="text-lg font-semibold">{{ valor }}</dd></div>
-    {% endfor %}
+    {% call cartao(t("compras.kpi_realizado")) %}{{ valor(realizado) }}{% endcall %}
+    {% call cartao(t("compras.kpi_forecast")) %}{{ valor(forecast) }}{% endcall %}
+    {% call cartao(t("compras.kpi_previstas")) %}{{ previstas }}{% endcall %}
   </dl>
 
   <div class="overflow-x-auto rounded-2xl ring-1 ring-border">
@@ -40,15 +41,21 @@
           <td class="px-3 py-2">{{ o.tipo }}</td>
           <td class="px-3 py-2">{{ o.fornecedor or t("compras.a_definir") }} · {{ o.descricao }}</td>
           <td class="px-3 py-2">{{ o.demanda }}</td>
-          <td class="px-3 py-2">{{ t("compras.status_" ~ o.status) }}</td>
-          <td class="px-3 py-2 text-right">{{ moeda(o.realizado_centavos) }}</td>
-          <td class="px-3 py-2 text-right">{{ moeda(o.forecast_centavos) }}</td>
+          <td class="px-3 py-2">{{ selo(t("compras.status_" ~ o.status), o.status) }}</td>
+          <td class="px-3 py-2 text-right">{{ valor(o.realizado_centavos) }}</td>
+          <td class="px-3 py-2 text-right">{{ valor(o.forecast_centavos) }}</td>
           <td class="px-3 py-2"><a class="underline" href="/compras/{{ o.id }}">{{ t("compras.editar") }}</a></td>
         </tr>
         {% else %}
         <tr><td class="px-3 py-4 text-muted-foreground" colspan="8">{{ t("compras.vazio") }}</td></tr>
         {% endfor %}
       </tbody>
+      <tfoot><tr class="border-t-2 border-border font-semibold">
+        <td class="px-3 py-2" colspan="5">{{ t("compras.total_filtro", n=linhas|length) }}</td>
+        <td class="px-3 py-2 text-right">{{ valor(realizado) }}</td>
+        <td class="px-3 py-2 text-right">{{ valor(forecast) }}</td>
+        <td></td>
+      </tr></tfoot>
     </table>
   </div>
 

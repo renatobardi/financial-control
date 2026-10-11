@@ -2,11 +2,32 @@ from functools import cache
 from pathlib import Path
 
 from fastapi.responses import HTMLResponse
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from jinja2 import (
+    Environment,
+    FileSystemLoader,
+    StrictUndefined,
+    pass_context,
+    select_autoescape,
+)
+from markupsafe import Markup, escape
 
 from financeiro import i18n
 
 PASTA = Path(__file__).parent / "templates"
+
+
+@pass_context
+def valor(contexto, centavos: int | None) -> Markup:
+    """Valor na preferência do usuário (mil ou mi), com o valor exato no tooltip."""
+    if centavos is None:
+        return Markup("—")
+    formato = contexto.get("formato")
+    if formato is None:
+        usuario = contexto.get("usuario")
+        formato = getattr(usuario, "formato_valor", "mil")
+    exato = escape(i18n.moeda(centavos))
+    curto = escape(i18n.valor_abreviado(centavos, formato))
+    return Markup(f'<span class="tabular-nums" title="{exato}">{curto}</span>')
 
 
 @cache
@@ -26,6 +47,7 @@ def ambiente() -> Environment:
         data_hora=i18n.data_hora,
         valor_abreviado=i18n.valor_abreviado,
         percentual=i18n.percentual,
+        valor=valor,
     )
     return env
 

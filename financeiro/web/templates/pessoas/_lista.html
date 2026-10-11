@@ -1,3 +1,4 @@
+{% from "_macros.html" import cartao, selo %}
 <div id="pessoas" class="flex flex-col gap-4">
   {% if ok %}<div role="status" class="rounded-xl bg-muted px-3 py-2">{{ ok }}</div>{% endif %}
   {% if erro %}<div role="alert" class="rounded-xl bg-destructive/10 px-3 py-2 text-destructive">{{ erro }}</div>{% endif %}
@@ -22,13 +23,11 @@
   </form>
 
   <dl class="grid grid-cols-2 gap-3 sm:grid-cols-5">
-    {% for rotulo, valor in [
-      ("pessoas.kpi_ativos", linhas|length), ("pessoas.kpi_funcionarios", n_funcionarios),
-      ("pessoas.kpi_terceiros", n_terceiros), ("pessoas.kpi_vagas", vagas_abertas),
-      ("pessoas.kpi_custo", moeda(custo_total)),
-    ] %}
-    <div class="rounded-xl bg-muted p-3"><dt class="text-xs text-muted-foreground">{{ t(rotulo) }}</dt><dd class="text-lg font-semibold">{{ valor }}</dd></div>
-    {% endfor %}
+    {% call cartao(t("pessoas.kpi_ativos")) %}{{ linhas|length }}{% endcall %}
+    {% call cartao(t("pessoas.kpi_funcionarios")) %}{{ n_funcionarios }}{% endcall %}
+    {% call cartao(t("pessoas.kpi_terceiros")) %}{{ n_terceiros }}{% endcall %}
+    {% call cartao(t("pessoas.kpi_vagas")) %}{{ vagas_abertas }}{% endcall %}
+    {% call cartao(t("pessoas.kpi_custo")) %}{{ valor(custo_total) }}{% endcall %}
   </dl>
 
   <section class="flex flex-col gap-2">
@@ -63,10 +62,10 @@
           <td class="px-3 py-2">{{ p.nome }}</td>
           <td class="px-3 py-2">{{ p.unidade }}</td>
           <td class="px-3 py-2">{{ p.cargo }} · {{ p.empresa }}</td>
-          <td class="px-3 py-2">{{ t("pessoas.vinculo_" ~ p.vinculo) }}</td>
+          <td class="px-3 py-2">{{ selo(t("pessoas.vinculo_" ~ p.vinculo), p.vinculo) }}</td>
           <td class="px-3 py-2 text-right">{{ p.meses_ativos }}</td>
           <td class="px-3 py-2 text-right">{{ numero(p.horas) }}</td>
-          <td class="px-3 py-2 text-right">{{ moeda(p.custo_centavos) }}</td>
+          <td class="px-3 py-2 text-right">{{ valor(p.custo_centavos) }}</td>
           <td class="px-3 py-2">{{ p.desligamento or t("pessoas.ativo") }}</td>
           {% if pode_editar %}
           <td class="px-3 py-2">
@@ -105,7 +104,7 @@
       <tfoot><tr class="border-t border-border font-semibold">
         <td class="px-3 py-2" colspan="6">{{ t("pessoas.total_filtro") }}</td>
         <td class="px-3 py-2 text-right">{{ numero(horas_total) }}</td>
-        <td class="px-3 py-2 text-right">{{ moeda(custo_total) }}</td>
+        <td class="px-3 py-2 text-right">{{ valor(custo_total) }}</td>
         <td colspan="{{ 2 if pode_editar else 1 }}"></td>
       </tr></tfoot>
     </table>

@@ -74,9 +74,14 @@ def _tabela(
                 "gap": orcamento.gap(v, total_ano),
             }
         )
+    tot_bruto = sum(x.bruto_centavos for x in linhas)
+    tot_liquido = sum(x.liquido_centavos for x in linhas)
+    tot_capex = sum(x.bruto_centavos for x in linhas if x.tipo == "CAPEX")
+    tot_opex = sum(x.bruto_centavos for x in linhas if x.tipo == "OPEX")
     return renderizar(
         "orcamento/_tabela.html",
         status,
+        formato=contexto.usuario.formato_valor,
         revisoes=todas,
         selecionada=selecionada,
         vigente=vigente,
@@ -87,6 +92,10 @@ def _tabela(
         markup=markup,
         iniciativas=portfolio.listar_iniciativas(conexao, bd_id),
         tipos=orcamento.TIPOS,
+        tot_bruto=tot_bruto,
+        tot_liquido=tot_liquido,
+        tot_capex=tot_capex,
+        tot_opex=tot_opex,
         csrf=contexto.csrf,
         pode_editar=contexto.papel in ("Admin", "Editor"),
         ok=ok,

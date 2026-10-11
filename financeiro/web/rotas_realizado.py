@@ -12,7 +12,7 @@ roteador = APIRouter(prefix="/realizado")
 
 def _parametros(request: Request, ano, dimensao, origem, base):
     ano = ano or request.app.state.agora().year
-    dimensao = dimensao if dimensao in realizado.DIMENSOES else "iniciativa"
+    dimensao = dimensao if dimensao in realizado.DIMENSOES else "iniciativa_tipo"
     origem = origem if origem in realizado.ORIGENS else "todas"
     base = base if base in realizado.BASES else "bruto"
     return ano, dimensao, origem, base
@@ -22,7 +22,7 @@ def _parametros(request: Request, ano, dimensao, origem, base):
 def pagina(
     request: Request,
     ano: IntOpcional = None,
-    dimensao: str = "iniciativa",
+    dimensao: str = "iniciativa_tipo",
     origem: str = "todas",
     base: str = "bruto",
     contexto: Contexto = Depends(exigir_sessao),
@@ -51,7 +51,7 @@ def pagina(
 def tabela(
     request: Request,
     ano: IntOpcional = None,
-    dimensao: str = "iniciativa",
+    dimensao: str = "iniciativa_tipo",
     origem: str = "todas",
     base: str = "bruto",
     contexto: Contexto = Depends(exigir_sessao),
@@ -63,9 +63,22 @@ def tabela(
     resultado = realizado.consultar(
         conexao, contexto.bd_id, ano, dimensao, origem, base, request.app.state.agora()
     )
+    por_origem = realizado.consultar(
+        conexao, contexto.bd_id, ano, "origem", "todas", base, request.app.state.agora()
+    )
+    realizado_por_origem = {x.chave: x.realizado for x in por_origem.linhas}
+    fechados = [n for n in range(12) if any(x.meses[n] is not None for x in resultado.linhas)]
+    maior = max((x.realizado for x in resultado.linhas), default=0) or 1
+    totais_mes = {n: sum(x.meses[n] or 0 for x in resultado.linhas) for n in fechados}
     return renderizar(
         "realizado/_tabela.html",
+        formato=contexto.usuario.formato_valor,
         tabela=resultado,
+        meses_fechados=fechados,
+        totais_mes=totais_mes,
+        barra_base=maior,
+        total_pessoas=realizado_por_origem.get("pessoas", 0),
+        total_compras=realizado_por_origem.get("compras", 0),
         com_orcamento=dimensao in ("iniciativa", "iniciativa_tipo"),
         meses=[f"{ano}-{m:02d}" for m in range(1, 13)],
     )
