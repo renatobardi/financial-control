@@ -23,6 +23,7 @@ class Passo(NamedTuple):
     contagem: int
     estado: str  # feito | pendente | bloqueado | nao_se_aplica
     bloqueado_por: tuple[str, ...]
+    pendencias: tuple[str, ...] = ()  # só com o passo feito; avisa, não muda estado nem `pronto`
 
 
 class Situacao(NamedTuple):
@@ -37,17 +38,18 @@ class _Regra(NamedTuple):
     obrigatorio: bool
     depende_de: tuple[str, ...]
     conta: tuple[str, ...]  # contagens que precisam ser >= 1; a primeira é a exibida
+    pendencia: str = ""  # regra de completude (chave de `store.onboarding.pendencias`), se houver
 
 
 # A ordem é a da tela. `depende_de` espelha as chaves estrangeiras do banco.
 _REGRAS = (
-    _Regra("organizacao", True, (), ("squad",)),
+    _Regra("organizacao", True, (), ("squad",), "tribo_sem_squad"),
     _Regra("iniciativas", True, (), ("iniciativa",)),
-    _Regra("demandas", True, ("iniciativas",), ("demanda",)),
+    _Regra("demandas", True, ("iniciativas",), ("demanda",), "iniciativa_sem_demanda"),
     _Regra("agrupamentos", True, (), ("agrupamento",)),
-    _Regra("temas", True, ("demandas", "agrupamentos"), ("tema",)),
+    _Regra("temas", True, ("demandas", "agrupamentos"), ("tema",), "demanda_sem_tema"),
     _Regra("cargos", True, (), ("cargo",)),
-    _Regra("tarifas", True, ("cargos",), ("tarifa", "markup")),
+    _Regra("tarifas", True, ("cargos",), ("tarifa", "markup"), "cargo_sem_tarifa"),
     _Regra("pessoas", True, ("organizacao", "temas", "cargos"), ("pessoa",)),
     _Regra("orcamento", False, ("iniciativas",), ("revisao",)),
     _Regra("compras", False, ("demandas",), ("compra",)),
@@ -58,6 +60,7 @@ _REGRAS = (
 def situacao(conexao: Conexao, bd_id: int) -> Situacao:
     contagens = armazem.contagens(conexao, bd_id)
     dispensados = armazem.dispensados(conexao, bd_id)
+    faltas = armazem.pendencias(conexao, bd_id)
     resolvidos: set[str] = set()
     passos = []
     for regra in _REGRAS:
@@ -73,8 +76,16 @@ def situacao(conexao: Conexao, bd_id: int) -> Situacao:
             estado, bloqueado_por = "pendente", ()
         if estado in ("feito", "nao_se_aplica"):
             resolvidos.add(regra.chave)
+        pendencias = faltas.get(regra.pendencia, ()) if estado == "feito" else ()
         passos.append(
-            Passo(regra.chave, regra.obrigatorio, contagens[regra.conta[0]], estado, bloqueado_por)
+            Passo(
+                regra.chave,
+                regra.obrigatorio,
+                contagens[regra.conta[0]],
+                estado,
+                bloqueado_por,
+                pendencias,
+            )
         )
     obrigatorios = [p for p in passos if p.obrigatorio]
     return Situacao(

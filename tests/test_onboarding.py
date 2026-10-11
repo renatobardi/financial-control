@@ -228,3 +228,102 @@ def test_bd_que_ja_existia_antes_da_funcionalidade_nasce_como_ja_aberto(tmp_path
 
     assert onboarding.abrir_primeira_vez(conexao, antigo) is False
     assert onboarding.abrir_primeira_vez(conexao, novo) is True
+
+
+def _pendencias(conexao, bd_id):
+    return {chave: p.pendencias for chave, p in _por_chave(conexao, bd_id).items()}
+
+
+def test_tribo_sem_squad_aparece_como_pendencia_da_organizacao(conexao, bd):
+    com_squad = organizacao.criar_tribo(conexao, bd, "Tribo A", "G", "2026-01")
+    organizacao.criar_squad(conexao, bd, "Squad", com_squad, "G", "2026-01")
+    organizacao.criar_tribo(conexao, bd, "Tribo B", "G", "2026-01")
+
+    passo = _por_chave(conexao, bd)["organizacao"]
+
+    assert passo.estado == "feito"
+    assert passo.pendencias == ("Tribo B",)
+
+
+def test_iniciativa_sem_demanda_aparece_como_pendencia_das_demandas(conexao, bd):
+    tribo = organizacao.criar_tribo(conexao, bd, "Tribo", "G", "2026-01")
+    squad = organizacao.criar_squad(conexao, bd, "Squad", tribo, "G", "2026-01")
+    alfa = portfolio.criar_iniciativa(conexao, bd, "I-01", "Alfa")
+    portfolio.criar_iniciativa(conexao, bd, "I-02", "Beta")
+    portfolio.criar_demanda(conexao, bd, "D-01", alfa, "Demanda", "OPEX", squad)
+
+    passo = _por_chave(conexao, bd)["demandas"]
+
+    assert passo.estado == "feito"
+    assert passo.pendencias == ("I-02 Beta",)
+
+
+def test_demanda_sem_tema_aparece_como_pendencia_dos_temas(conexao, bd):
+    ini = portfolio.criar_iniciativa(conexao, bd, "I-01", "Alfa")
+    com_tema = portfolio.criar_demanda(conexao, bd, "D-01", ini, "Motor", "OPEX", None)
+    portfolio.criar_demanda(conexao, bd, "D-02", ini, "Regras", "CAPEX", None)
+    agrup = portfolio.criar_agrupamento(conexao, bd, "RTB")
+    portfolio.criar_tema(conexao, bd, "T-01", com_tema, "Tema", agrup)
+
+    passo = _por_chave(conexao, bd)["temas"]
+
+    assert passo.estado == "feito"
+    assert passo.pendencias == ("D-02 Regras",)
+
+
+def test_cargo_sem_tarifa_aparece_como_pendencia_das_tarifas(conexao, bd):
+    empresa = cadastros.criar_empresa(conexao, bd, "Própria", "propria")
+    pleno = cadastros.criar_cargo(conexao, bd, empresa, "Pleno", "N8")
+    cadastros.criar_cargo(conexao, bd, empresa, "Sênior", "N10")
+    cadastros.definir_tarifa(conexao, bd, pleno, 12000, "2026-01")
+    cadastros.definir_markup(conexao, bd, 1050, "2026-01")
+
+    passo = _por_chave(conexao, bd)["tarifas"]
+
+    assert passo.estado == "feito"
+    assert passo.pendencias == ("Sênior (Própria)",)
+
+
+def test_passo_que_nao_esta_feito_nao_mostra_pendencias(conexao, bd):
+    organizacao.criar_tribo(conexao, bd, "Tribo B", "G", "2026-01")
+    portfolio.criar_iniciativa(conexao, bd, "I-01", "Alfa")
+
+    pendencias = _pendencias(conexao, bd)
+
+    assert _estados(conexao, bd)["organizacao"] == "pendente"
+    assert pendencias["organizacao"] == ()
+    assert pendencias["demandas"] == ()
+
+
+def test_pendencia_nao_muda_pronto_nem_bloqueio(conexao, bd):
+    cargo = cadastrar_ate_pessoa(conexao, bd)
+    cadastros.definir_tarifa(conexao, bd, cargo, 12000, "2026-01")
+    cadastros.definir_markup(conexao, bd, 1050, "2026-01")
+    portfolio.criar_iniciativa(conexao, bd, "I-02", "Beta")  # sem demanda
+    empresa = cadastros.criar_empresa(conexao, bd, "Consultoria", "consultoria")
+    cadastros.criar_cargo(conexao, bd, empresa, "Dev", "N8")  # sem tarifa
+
+    situacao = onboarding.situacao(conexao, bd)
+
+    assert situacao.pronto is True
+    assert situacao.feitos == 8
+    assert _pendencias(conexao, bd)["demandas"] == ("I-02 Beta",)
+    assert _pendencias(conexao, bd)["tarifas"] == ("Dev (Consultoria)",)
+
+
+def test_bd_completo_nao_tem_pendencias(conexao, bd):
+    cargo = cadastrar_ate_pessoa(conexao, bd)
+    cadastros.definir_tarifa(conexao, bd, cargo, 12000, "2026-01")
+    cadastros.definir_markup(conexao, bd, 1050, "2026-01")
+
+    assert all(p == () for p in _pendencias(conexao, bd).values())
+
+
+def test_pendencias_sao_isoladas_por_bd(conexao, bd):
+    outro = acesso.criar_bd(conexao, "Outro", "OU")
+    cadastrar_ate_pessoa(conexao, outro)
+    portfolio.criar_iniciativa(conexao, outro, "I-09", "Sem demanda")
+    portfolio.criar_iniciativa(conexao, bd, "I-01", "Alfa")
+
+    assert _pendencias(conexao, outro)["demandas"] == ("I-09 Sem demanda",)
+    assert _pendencias(conexao, bd)["demandas"] == ()

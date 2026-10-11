@@ -20,6 +20,40 @@ _CONTAGENS = {
 }
 
 
+# Registros que falta completar, um nome por linha. Só quem tem filho a menos entra.
+_PENDENCIAS = {
+    "tribo_sem_squad": (
+        "SELECT t.nome FROM org t WHERE t.bd_id = :bd AND t.tipo = 'Tribo'"
+        " AND NOT EXISTS (SELECT 1 FROM org s WHERE s.bd_id = t.bd_id AND s.pai_id = t.id"
+        " AND s.tipo = 'Squad') ORDER BY t.nome"
+    ),
+    "iniciativa_sem_demanda": (
+        "SELECT i.codigo || ' ' || i.nome FROM iniciativa i WHERE i.bd_id = :bd"
+        " AND NOT EXISTS (SELECT 1 FROM demanda d WHERE d.bd_id = i.bd_id"
+        " AND d.iniciativa_id = i.id) ORDER BY i.codigo"
+    ),
+    "demanda_sem_tema": (
+        "SELECT d.codigo || ' ' || d.nome FROM demanda d WHERE d.bd_id = :bd"
+        " AND NOT EXISTS (SELECT 1 FROM tema t WHERE t.bd_id = d.bd_id"
+        " AND t.demanda_id = d.id) ORDER BY d.codigo"
+    ),
+    "cargo_sem_tarifa": (
+        "SELECT c.nome || ' (' || e.nome || ')' FROM cargo c"
+        " JOIN empresa e ON e.bd_id = c.bd_id AND e.id = c.empresa_id"
+        " WHERE c.bd_id = :bd AND NOT EXISTS (SELECT 1 FROM tarifa t WHERE t.bd_id = c.bd_id"
+        " AND t.cargo_id = c.id) ORDER BY e.nome, c.nome"
+    ),
+}
+
+
+def pendencias(conexao: sqlite3.Connection, bd_id: int) -> dict[str, tuple[str, ...]]:
+    """Os registros do BD a que falta o filho que a regra de completude pede."""
+    return {
+        chave: tuple(nome for (nome,) in conexao.execute(sql, {"bd": bd_id}))
+        for chave, sql in _PENDENCIAS.items()
+    }
+
+
 def contagens(conexao: sqlite3.Connection, bd_id: int) -> dict[str, int]:
     """Quantos registros o BD tem de cada cadastro que o onboarding confere."""
     resultado = {}
