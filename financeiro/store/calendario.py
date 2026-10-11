@@ -44,3 +44,13 @@ def feriados_do_ano(conexao: sqlite3.Connection, bd_id: int, ano: int) -> list[t
         (bd_id, f"{ano:04d}-%"),
     ).fetchall()
     return [(data, nome) for data, nome in linhas]
+
+
+def mes_tem_carga(conexao: sqlite3.Connection, bd_id: int, mes: str) -> bool:
+    """O mês (AAAA-MM) já tem horas lançadas, por carga ou por qualquer outro caminho."""
+    return (
+        conexao.execute(
+            "SELECT 1 FROM alocacao WHERE bd_id = ? AND mes = ? LIMIT 1", (bd_id, mes)
+        ).fetchone()
+        is not None
+    )

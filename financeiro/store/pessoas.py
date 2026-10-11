@@ -160,10 +160,11 @@ def atualizar_pessoa(
     cargo_id: int,
     tema_id: int,
     desligamento: str | None,
+    nome: str | None = None,
 ) -> None:
     conexao.execute(
-        "UPDATE pessoa SET org_id = ?, cargo_id = ?, tema_id = ?, desligamento = ?"
-        " WHERE bd_id = ? AND id = ?",
-        (org_id, cargo_id, tema_id, desligamento, bd_id, pessoa_id),
+        "UPDATE pessoa SET org_id = ?, cargo_id = ?, tema_id = ?, desligamento = ?,"
+        " nome = COALESCE(?, nome) WHERE bd_id = ? AND id = ?",
+        (org_id, cargo_id, tema_id, desligamento, nome, bd_id, pessoa_id),
     )
     conexao.commit()

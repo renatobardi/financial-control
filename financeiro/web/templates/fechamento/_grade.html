@@ -33,14 +33,14 @@
       </div>
       {% if pode_editar and m.pode_fechar %}
       <form method="post" action="/fechamento/{{ m.mes }}/fechar" hx-post="/fechamento/{{ m.mes }}/fechar"
-            hx-target="#grade-fechamento" hx-swap="outerHTML">
+            hx-target="#grade-fechamento" hx-swap="outerHTML" hx-confirm="{{ t('confirmar.fechar_mes') }}">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         <input type="hidden" name="ano" value="{{ ano }}">
         <button type="submit" class="rounded-4xl bg-primary px-3 py-1 text-primary-foreground">{{ t("fechamento_tela.fechar", mes=rot) }}</button>
       </form>
       {% elif pode_editar and m.pode_reabrir %}
       <form method="post" action="/fechamento/{{ m.mes }}/reabrir" hx-post="/fechamento/{{ m.mes }}/reabrir"
-            hx-target="#grade-fechamento" hx-swap="outerHTML" hx-include="#motivo">
+            hx-target="#grade-fechamento" hx-swap="outerHTML" hx-include="#motivo" hx-confirm="{{ t('confirmar.reabrir_mes') }}">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         <input type="hidden" name="ano" value="{{ ano }}">
         <input type="text" name="motivo" placeholder="{{ t('fechamento_tela.motivo') }}" required

@@ -71,11 +71,33 @@ def gerar(conexao: Conexao, bd_id: int, ano: int) -> None:
         armazem.gravar_horas(conexao, bd_id, ano, mes, horas, ajustado=False)
 
 
-def ajustar(conexao: Conexao, bd_id: int, ano: int, mes: int, horas: int) -> None:
+class AjusteBloqueado(Exception):
+    """O mês não aceita ajuste: já passou ou já tem carga de horas. `motivo`: passado | carga."""
+
+    def __init__(self, motivo: str):
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+def ajustar(
+    conexao: Conexao,
+    bd_id: int,
+    ano: int,
+    mes: int,
+    horas: int,
+    mes_atual: str | None = None,
+) -> None:
+    """Ajusta as horas de um mês. Com `mes_atual` (AAAA-MM), só mês futuro e sem carga."""
     if not 1 <= mes <= 12:
         raise ValueError(f"mês fora de 1 a 12: {mes}")
     if horas < 0:
         raise ValueError(f"horas negativas: {horas}")
+    if mes_atual is not None:
+        alvo = f"{ano:04d}-{mes:02d}"
+        if alvo < mes_atual:
+            raise AjusteBloqueado("passado")
+        if armazem.mes_tem_carga(conexao, bd_id, alvo):
+            raise AjusteBloqueado("carga")
     armazem.gravar_horas(conexao, bd_id, ano, mes, horas, ajustado=True)
 
 

@@ -40,6 +40,7 @@ def _fragmento(
         linhas, pagina, total = abas.paginar(conteudo.linhas, pagina, q)
     else:
         linhas, pagina, total = conteudo.linhas, 1, 1
+    linhas = [linha if len(linha) == 4 else (*linha, None) for linha in linhas]
     return renderizar(
         "cadastros/_aba.html",
         status,
