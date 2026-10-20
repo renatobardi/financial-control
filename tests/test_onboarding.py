@@ -133,8 +133,8 @@ def test_apagar_o_unico_squad_volta_a_nao_pronto(conexao, bd):
     cadastros.definir_markup(conexao, bd, 1050, "2026-01")
     assert onboarding.situacao(conexao, bd).pronto is True
 
-    conexao.execute("PRAGMA foreign_keys = OFF")
-    conexao.execute("DELETE FROM org WHERE bd_id = ? AND tipo = 'Squad'", (bd,))
+    conexao.execute("SET session_replication_role = replica")  # sem checar chaves estrangeiras
+    conexao.execute("DELETE FROM org WHERE bd_id = %s AND tipo = 'Squad'", (bd,))
 
     assert onboarding.situacao(conexao, bd).pronto is False
     assert _estados(conexao, bd)["organizacao"] == "pendente"
@@ -198,7 +198,7 @@ def test_dado_cadastrado_vale_mais_que_a_dispensa(conexao, bd):
     onboarding.dispensar(conexao, bd, "orcamento")
     portfolio.criar_iniciativa(conexao, bd, "I-01", "Iniciativa")
     conexao.execute(
-        "INSERT INTO pdd_revisao (bd_id, rotulo, criada_em) VALUES (?, 'Original', '2026-01-01')",
+        "INSERT INTO pdd_revisao (bd_id, rotulo, criada_em) VALUES (%s, 'Original', '2026-01-01')",
         (bd,),
     )
 
@@ -213,13 +213,13 @@ def test_abrir_primeira_vez_so_devolve_verdadeiro_uma_vez_por_bd(conexao, bd):
     assert onboarding.abrir_primeira_vez(conexao, outro) is True
 
 
-def test_bd_que_ja_existia_antes_da_funcionalidade_nasce_como_ja_aberto(tmp_path):
+def test_bd_que_ja_existia_antes_da_funcionalidade_nasce_como_ja_aberto(tmp_path, conexao_vazia):
     antigas = tmp_path / "antigas"
     antigas.mkdir()
     for arquivo in store.PASTA_MIGRACOES.glob("*.sql"):
         if arquivo.name < "0013":
             (antigas / arquivo.name).write_text(arquivo.read_text())
-    conexao = store.abrir(tmp_path / "f.db")
+    conexao = conexao_vazia
     store.migrar(conexao, antigas)
     antigo = acesso.criar_bd(conexao, "Antigo", "AN")
 

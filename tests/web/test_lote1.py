@@ -140,7 +140,7 @@ def test_calendario_nao_ajusta_mes_passado_nem_com_carga(ambiente):
     pessoa = pessoas.listar_pessoas(c, bd)[0].id
     tema = portfolio.listar_temas(c, bd)[0].id
     c.execute(
-        "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (?, ?, ?, '2026-12', 10)",
+        "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (%s, %s, %s, '2026-12', 10)",
         (bd, pessoa, tema),
     )
     c.commit()

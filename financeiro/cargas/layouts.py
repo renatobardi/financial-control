@@ -232,13 +232,13 @@ def _compras(ctx, linhas):
 
 def _revisao_rascunho(ctx: Contexto) -> int:
     existente = ctx.conexao.execute(
-        "SELECT id FROM pdd_revisao WHERE bd_id = ? AND estado = 'rascunho' ORDER BY id DESC",
+        "SELECT id FROM pdd_revisao WHERE bd_id = %s AND estado = 'rascunho' ORDER BY id DESC",
         (ctx.bd_id,),
     ).fetchone()
     if existente:
         return existente[0]
     total = ctx.conexao.execute(
-        "SELECT COUNT(*) FROM pdd_revisao WHERE bd_id = ?", (ctx.bd_id,)
+        "SELECT COUNT(*) FROM pdd_revisao WHERE bd_id = %s", (ctx.bd_id,)
     ).fetchone()[0]
     rotulo = "Original" if total == 0 else f"T{total}"
     return armazem.inserir(
@@ -335,7 +335,7 @@ def _tarifa(ctx: Contexto, d: dict[str, str]) -> tuple[str, int, int]:
     valor = _dinheiro(d["valor_hora_liquido"])
     existentes = ctx.conexao.execute(
         "SELECT id, liquida_centavos, vigencia_ini, vigencia_fim FROM tarifa"
-        " WHERE bd_id = ? AND cargo_id = ? ORDER BY vigencia_ini",
+        " WHERE bd_id = %s AND cargo_id = %s ORDER BY vigencia_ini",
         (ctx.bd_id, cargo["id"]),
     ).fetchall()
     for _id, liquida, ini, _fim in existentes:

@@ -223,3 +223,15 @@ def test_calendario_gera_o_ano_e_mostra_as_horas(ambiente):
 
     assert resposta.status_code == 200
     assert "jan/2026" in resposta.text and "168" in resposta.text  # 21 dias úteis x 8 h
+
+
+def test_cadastro_recusado_pelo_banco_nao_derruba_a_sessao_nem_o_proximo_cadastro(ambiente):
+    csrf, _ = _preparar(ambiente)
+    _postar(ambiente, csrf, "empresas", "nova", nome="NTT", tipo="consultoria")
+
+    repetida = _postar(ambiente, csrf, "empresas", "nova", nome="NTT", tipo="consultoria")
+    seguinte = _postar(ambiente, csrf, "empresas", "nova", nome="Outra", tipo="propria")
+
+    assert repetida.status_code in (200, 400, 409, 422)
+    assert seguinte.status_code == 200
+    assert "Outra" in ambiente.cliente.get("/cadastros/empresas/lista").text

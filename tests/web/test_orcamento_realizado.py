@@ -16,7 +16,7 @@ def _preparar(ambiente, papel="Editor"):
     cadastros.definir_markup(c, bd, 1000, "2026-01")
     for mes, horas in (("2026-01", 100), ("2026-02", 50)):
         c.execute(
-            "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (%s, %s, %s, %s, %s)",
             (bd, pessoa, tema, mes, horas),
         )
     c.commit()
@@ -104,13 +104,13 @@ def test_filtro_de_origem_mostra_a_nota_de_reconciliacao(ambiente):
     bd, _ = _preparar(ambiente)
     demanda = ambiente.conexao.execute("SELECT id FROM demanda").fetchone()[0]
     ambiente.conexao.execute(
-        "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status) VALUES (?, 'OC9', 'OC', ?, 'emitida')",
+        "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status) VALUES (%s, 'OC9', 'OC', %s, 'emitida')",
         (bd, demanda),
     )
     compra_id = ambiente.conexao.execute("SELECT id FROM compra").fetchone()[0]
     ambiente.conexao.execute(
         "INSERT INTO compra_mes (bd_id, compra_id, mes, valor_liquido_centavos)"
-        " VALUES (?, ?, '2026-03', 100000)",
+        " VALUES (%s, %s, '2026-03', 100000)",
         (bd, compra_id),
     )
     ambiente.conexao.commit()

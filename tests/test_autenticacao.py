@@ -2,18 +2,16 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from financeiro import autenticacao, senha, store
+from financeiro import autenticacao, senha
 from financeiro.store import acesso
 
 AGORA = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 
 
 @pytest.fixture
-def conexao():
-    c = store.abrir(":memory:")
-    store.migrar(c, store.PASTA_MIGRACOES)
-    acesso.criar_usuario(c, "ana@empresa.com", "Ana", senha.gerar_hash("correta-123"))
-    return c
+def conexao(conexao):
+    acesso.criar_usuario(conexao, "ana@empresa.com", "Ana", senha.gerar_hash("correta-123"))
+    return conexao
 
 
 def test_entrar_com_credenciais_certas_devolve_token_e_sessao(conexao):

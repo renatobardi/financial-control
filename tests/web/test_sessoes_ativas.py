@@ -63,7 +63,7 @@ def test_encerrar_outra_sessao_invalida_o_token_dela(ambiente):
 def test_a_sessao_atual_nao_se_encerra_por_aqui(ambiente):
     semear(ambiente)
     entrar(ambiente)
-    linha = ambiente.conexao.execute("SELECT rowid FROM sessao").fetchone()[0]
+    linha = ambiente.conexao.execute("SELECT id FROM sessao").fetchone()[0]
 
     resposta = ambiente.cliente.post(
         f"/configuracoes/sessoes/{linha}/encerrar", data={"csrf": _csrf(ambiente)}
@@ -79,7 +79,7 @@ def test_sessao_de_outro_usuario_e_404_e_nao_muda(ambiente):
     token_bia = _outra_sessao(ambiente, email="bia@empresa.com")
     entrar(ambiente)
     alheia = ambiente.conexao.execute(
-        "SELECT s.rowid FROM sessao s JOIN usuario u ON u.id = s.usuario_id WHERE u.email = ?",
+        "SELECT s.id FROM sessao s JOIN usuario u ON u.id = s.usuario_id WHERE u.email = %s",
         ("bia@empresa.com",),
     ).fetchone()[0]
 

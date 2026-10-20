@@ -1,14 +1,45 @@
-import sqlite3
-from pathlib import Path
+from decimal import Decimal
+
+import psycopg
+from psycopg import adapt
+from psycopg_pool import ConnectionPool
+
+# Pool do app: 6 usuários no máximo (ADR-0001); uma conexão emprestada por requisição.
+TAMANHO_MIN = 1
+TAMANHO_MAX = 5
 
 
-def abrir(caminho: Path | str) -> sqlite3.Connection:
-    """Abre o banco em WAL, com chaves estrangeiras ligadas.
+class _InteiroSeExato(adapt.Loader):
+    """`SUM` de inteiros volta como `numeric` (Decimal); o app só usa inteiros (centavos, horas)."""
 
-    Uma conexão por requisição, usada em sequência: o FastAPI pode abri-la numa thread e usá-la
-    noutra, então a checagem de thread do sqlite3 fica desligada.
-    """
-    conexao = sqlite3.connect(caminho, check_same_thread=False)
-    conexao.execute("PRAGMA journal_mode = WAL")
-    conexao.execute("PRAGMA foreign_keys = ON")
+    def load(self, data):
+        valor = Decimal(bytes(data).decode())
+        return int(valor) if valor == valor.to_integral_value() else valor
+
+
+def _opcoes(schema: str | None) -> str | None:
+    return f"-c search_path={schema}" if schema else None
+
+
+def _preparar(conexao: psycopg.Connection) -> None:
+    conexao.adapters.register_loader("numeric", _InteiroSeExato)
+
+
+def abrir(url: str, schema: str | None = None) -> psycopg.Connection:
+    """Abre uma conexão (CLI, migração, testes). `schema` fixa o `search_path`; em produção a
+    role do app já tem o schema dela como `search_path`."""
+    conexao = psycopg.connect(url, options=_opcoes(schema))
+    _preparar(conexao)
     return conexao
+
+
+def criar_pool(url: str, schema: str | None = None) -> ConnectionPool:
+    """Pool do app, fechado até `pool.open()` (o ciclo de vida da app abre e fecha)."""
+    return ConnectionPool(
+        url,
+        min_size=TAMANHO_MIN,
+        max_size=TAMANHO_MAX,
+        kwargs={"options": _opcoes(schema)},
+        configure=_preparar,
+        open=False,
+    )

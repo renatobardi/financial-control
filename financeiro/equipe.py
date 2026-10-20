@@ -139,6 +139,7 @@ def nova_pessoa(
             None,
         )
     except ErroDeIntegridade as erro:
+        conexao.rollback()
         raise EquipeInvalida(t("erros.matricula_repetida")) from erro
 
 
@@ -179,4 +180,5 @@ def editar(
             nome.strip() if nome and nome.strip() else None,
         )
     except ErroDeIntegridade as erro:
+        conexao.rollback()
         raise EquipeInvalida(t("erros.cargo_tema_outro_bd")) from erro

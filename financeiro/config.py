@@ -3,12 +3,16 @@
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from pathlib import Path
+
+# Só para desenvolvimento local (o `db` do perfil `dev` do compose: `make db`).
+# Em produção vem do .env.
+URL_BD_PADRAO = "postgresql://postgres:teste@127.0.0.1:55439/postgres"
 
 
 @dataclass(frozen=True)
 class Config:
-    caminho_bd: Path
+    # URL do Postgres (oute-supabase-db). Contém a senha da role do app: nunca no repr nem em log.
+    url_bd: str = field(repr=False)
     commit: str
     # Segredo do cookie de sessão. Sem ele, o app gera um por processo (sessões não
     # sobrevivem a reinício).
@@ -25,7 +29,7 @@ def carregar(ambiente: Mapping[str, str] | None = None) -> Config:
     ambiente = os.environ if ambiente is None else ambiente
     segredo = ambiente.get("FINANCEIRO_SEGREDO")
     return Config(
-        caminho_bd=Path(ambiente.get("FINANCEIRO_BD", "dados/financeiro.db")),
+        url_bd=ambiente.get("FINANCEIRO_DATABASE_URL", URL_BD_PADRAO),
         commit=ambiente.get("FINANCEIRO_COMMIT", "desconhecido"),
         segredo=segredo.encode() if segredo else None,
         cookie_seguro=ambiente.get("FINANCEIRO_COOKIE_SEGURO", "1") != "0",

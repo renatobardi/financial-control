@@ -42,6 +42,7 @@ def criar(
             conexao, bd_id, nome.strip(), fator_pessoas, fator_compras, **composicao
         )
     except ErroDeIntegridade as erro:
+        conexao.rollback()
         raise CenarioInvalido("Já existe um cenário com este nome.") from erro
 
 
@@ -80,6 +81,7 @@ def atualizar(conexao: Conexao, bd_id: int, cenario_id: int, **campos: object) -
     try:
         armazem.atualizar(conexao, bd_id, cenario_id, **campos)
     except ErroDeIntegridade as erro:
+        conexao.rollback()
         raise CenarioInvalido("Valor inválido ou nome já usado por outro cenário.") from erro
 
 
@@ -99,4 +101,5 @@ def definir_inicio_vaga(
     try:
         armazem.definir_inicio_vaga(conexao, bd_id, cenario_id, vaga_id, mes)
     except ErroDeIntegridade as erro:
+        conexao.rollback()
         raise CenarioInvalido("Vaga não encontrada neste BD.") from erro

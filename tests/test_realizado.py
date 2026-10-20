@@ -29,17 +29,17 @@ def base(conexao):
     pessoa = pessoas.criar_pessoa(conexao, bd, "F1", "Ana", squad, cargo, tema, "2025-01", None)
     for mes, horas in (("2026-01", 100), ("2026-02", 50)):
         conexao.execute(
-            "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (%s, %s, %s, %s, %s)",
             (bd, pessoa, tema, mes, horas),
         )
     conexao.execute(
-        "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status) VALUES (?, 'OC1', 'OC', ?, 'emitida')",
+        "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status) VALUES (%s, 'OC1', 'OC', %s, 'emitida')",
         (bd, d_beta),
     )
     compra = conexao.execute("SELECT id FROM compra").fetchone()[0]
     conexao.execute(
         "INSERT INTO compra_mes (bd_id, compra_id, mes, valor_liquido_centavos)"
-        " VALUES (?, ?, '2026-01', 100000)",
+        " VALUES (%s, %s, '2026-01', 100000)",
         (bd, compra),
     )
     conexao.commit()

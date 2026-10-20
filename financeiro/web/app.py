@@ -37,14 +37,18 @@ def criar_app(cfg: Config, agora: Callable[[], datetime] = _agora) -> FastAPI:
 
     @asynccontextmanager
     async def ciclo(app: FastAPI) -> AsyncIterator[None]:
-        cfg.caminho_bd.parent.mkdir(parents=True, exist_ok=True)
-        conexao = store.abrir(cfg.caminho_bd)
+        conexao = store.abrir(cfg.url_bd)
         store.migrar(conexao, store.PASTA_MIGRACOES)
         conexao.close()
-        yield
+        app.state.pool.open()
+        try:
+            yield
+        finally:
+            app.state.pool.close()
 
     app = FastAPI(lifespan=ciclo)
     app.state.cfg = cfg
+    app.state.pool = store.criar_pool(cfg.url_bd)
     app.state.agora = agora
     app.state.segredo = cfg.segredo or secrets.token_bytes(32)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
@@ -63,10 +67,7 @@ def criar_app(cfg: Config, agora: Callable[[], datetime] = _agora) -> FastAPI:
 
     @app.get("/healthz")
     def healthz() -> dict[str, object]:
-        conexao = store.abrir(cfg.caminho_bd)
-        try:
+        with app.state.pool.connection() as conexao:
             return {"commit": cfg.commit, "esquema": store.versao_atual(conexao)}
-        finally:
-            conexao.close()
 
     return app

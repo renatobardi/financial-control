@@ -32,6 +32,7 @@ def _criar(conexao, bd_id, tipo, nome, pai_id, gestor, inicio) -> int:
     try:
         return organizacao.criar_org(conexao, bd_id, tipo, nome.strip(), pai_id, gestor, inicio)
     except ErroDeIntegridade as erro:
+        conexao.rollback()
         raise OrganizacaoInvalida(f"nome já existe neste BD: {nome}") from erro
 
 

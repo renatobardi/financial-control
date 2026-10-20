@@ -24,11 +24,12 @@ def semear(
     )
     ids = {}
     for nome_bd, papel in bds:
-        existente = c.execute("SELECT id FROM bd WHERE nome = ?", (nome_bd,)).fetchone()
+        existente = c.execute("SELECT id FROM bd WHERE nome = %s", (nome_bd,)).fetchone()
         bd_id = existente[0] if existente else acesso.criar_bd(c, nome_bd, nome_bd[:2].upper())
         if not existente:
             c.execute(
-                "UPDATE bd SET onboarding_aberto = ? WHERE id = ?", (int(onboarding_aberto), bd_id)
+                "UPDATE bd SET onboarding_aberto = %s WHERE id = %s",
+                (int(onboarding_aberto), bd_id),
             )
             c.commit()
         acesso.adicionar_membro(c, bd_id, usuario_id, papel)

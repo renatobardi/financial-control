@@ -38,6 +38,7 @@ Python 3.12 e `uv`. Da raiz do repositório:
 
 ```bash
 uv sync
+make db                                 # Postgres local para desenvolver e testar
 export FINANCEIRO_COOKIE_SEGURO=0      # só em desenvolvimento, sem TLS
 export FINANCEIRO_ADMIN_SENHA='uma-senha-forte'
 uv run python -m financeiro semear     # dados de exemplo; entre com demo@exemplo.com
@@ -47,4 +48,4 @@ uv run python -m financeiro servir     # http://127.0.0.1:8000
 - Em produção: `uv run python -m financeiro criar-admin --email E --nome N --bd B` (a senha é
   perguntada no terminal) e `docs/deploy.md`.
 - Gates: `make test` e `make lint`. A CI roda os dois e constrói a imagem Docker.
-- Banco: um arquivo SQLite (`FINANCEIRO_BD`, padrão `dados/financeiro.db`), migrado na partida.
+- Banco: Postgres (`FINANCEIRO_DATABASE_URL`; em produção, o `oute-supabase-db`, ADR-0004), migrado na partida. Em desenvolvimento, `make db` sobe um Postgres local.

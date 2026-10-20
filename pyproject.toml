@@ -11,6 +11,8 @@ dependencies = [
     "jinja2>=3.1",
     "python-multipart>=0.0.9",
     "openpyxl>=3.1",
+    "psycopg[binary]>=3.2",
+    "psycopg-pool>=3.2",
 ]
 
 [dependency-groups]
@@ -45,7 +47,8 @@ select = ["E", "F", "W", "I", "UP", "B", "TID251"]
 
 # Regras de dependência entre módulos (AGENTS.md). Quem pode usar cada API está em per-file-ignores.
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
-"sqlite3".msg = "Só financeiro/store/ tem SQL."
+"psycopg".msg = "Só financeiro/store/ tem SQL."
+"psycopg_pool".msg = "Só financeiro/store/ tem SQL."
 "httpx".msg = "Só módulos de rede próprios falam com a rede."
 "urllib.request".msg = "Só módulos de rede próprios falam com a rede."
 "socket".msg = "Só módulos de rede próprios falam com a rede."
@@ -54,6 +57,10 @@ select = ["E", "F", "W", "I", "UP", "B", "TID251"]
 
 [tool.ruff.lint.per-file-ignores]
 "financeiro/config.py" = ["TID251"]
+# O Postgres dos testes vem do ambiente (tests/banco.py), como a URL do banco vem em config.py.
+"tests/banco.py" = ["TID251"]
+# Script único do cutover da #68 (SQLite → Postgres): sai na limpeza, junto com esta exceção.
+"scripts/sqlite_para_postgres.py" = ["TID251"]
 "financeiro/store/**" = ["TID251"]
 # Teste de fumaça do store abre o banco direto para conferir o resultado de fora.
 "tests/store/**" = ["TID251"]

@@ -88,7 +88,7 @@ def test_compra_em_mes_aberto_entra_como_forecast_e_mes_fechado_como_realizado(b
     )
     conexao.execute(
         "INSERT INTO compra_mes (bd_id, compra_id, mes, valor_liquido_centavos)"
-        " VALUES (?, ?, '2026-01', 100000)",
+        " VALUES (%s, %s, '2026-01', 100000)",
         (bd, ordem),
     )
     conexao.commit()
@@ -119,7 +119,7 @@ def test_nao_cancela_ordem_com_valor_em_mes_fechado(base):
     ordem = compras.criar_prevista(conexao, bd, "OC", dem, "X", usuario, AGORA)
     conexao.execute(
         "INSERT INTO compra_mes (bd_id, compra_id, mes, valor_liquido_centavos)"
-        " VALUES (?, ?, '2026-01', 100000)",
+        " VALUES (%s, %s, '2026-01', 100000)",
         (bd, ordem),
     )
     conexao.commit()
@@ -153,7 +153,7 @@ def test_valores_por_mes_mostra_realizado_bruto_e_forecast(base):
     ordem = compras.criar_prevista(conexao, bd, "OS", dem, "X", usuario, AGORA)
     conexao.execute(
         "INSERT INTO compra_mes (bd_id, compra_id, mes, valor_liquido_centavos)"
-        " VALUES (?, ?, '2026-01', 100000)",
+        " VALUES (%s, %s, '2026-01', 100000)",
         (bd, ordem),
     )
     conexao.commit()

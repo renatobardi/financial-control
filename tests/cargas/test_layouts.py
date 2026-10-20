@@ -43,7 +43,7 @@ def test_compras_rejeitam_ordem_inexistente_cancelada_e_valor_ruim(base):
 
 def test_compras_em_mes_fechado_sao_rejeitadas(base):
     base.conexao.execute(
-        "INSERT INTO mes_fechado (bd_id, mes, fechado_em) VALUES (?, '2026-08', 'x')", (base.bd,)
+        "INSERT INTO mes_fechado (bd_id, mes, fechado_em) VALUES (%s, '2026-08', 'x')", (base.bd,)
     )
     base.conexao.commit()
 

@@ -19,7 +19,6 @@ SEM_BD_ID = {
     "tentativa_login",
     "segundo_fator",
     "codigo_recuperacao",
-    "sqlite_sequence",
 }
 # Funções que cruzam BDs de propósito (@entre_bds). Acrescentar uma exige decisão revisada aqui.
 ENTRE_BDS_PERMITIDAS = {
@@ -33,12 +32,14 @@ ENTRE_BDS_PERMITIDAS = {
 PASTA_MIGRACOES = Path(store.__file__).parent / "migracoes"
 
 
-def tabelas_de_dado() -> set[str]:
-    """Tabelas do esquema real, menos as que o ADR-0002 dispensa de `bd_id`."""
-    conexao = store.abrir(":memory:")
-    if PASTA_MIGRACOES.exists():
-        store.migrar(conexao, PASTA_MIGRACOES)
-    nomes = {r[0] for r in conexao.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+def tabelas_de_dado(conexao) -> set[str]:
+    """Tabelas do esquema real (já migrado em `conexao`), menos as que o ADR-0002 dispensa de `bd_id`."""
+    nomes = {
+        r[0]
+        for r in conexao.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema()"
+        )
+    }
     return nomes - SEM_BD_ID
 
 
@@ -68,17 +69,23 @@ def violacoes(modulos: list[types.ModuleType], tabelas: set[str]) -> list[str]:
     return achadas
 
 
-def test_funcoes_do_store_que_tocam_tabela_de_dado_recebem_bd_id():
-    assert violacoes(modulos_do_store(), tabelas_de_dado()) == []
+def test_funcoes_do_store_que_tocam_tabela_de_dado_recebem_bd_id(conexao):
+    assert violacoes(modulos_do_store(), tabelas_de_dado(conexao)) == []
 
 
-def test_toda_tabela_de_dado_tem_coluna_bd_id():
-    conexao = store.abrir(":memory:")
-    store.migrar(conexao, PASTA_MIGRACOES)
+def test_toda_tabela_de_dado_tem_coluna_bd_id(conexao):
     sem_coluna = [
         tabela
-        for tabela in sorted(tabelas_de_dado())
-        if "bd_id" not in {c[1] for c in conexao.execute(f"PRAGMA table_info({tabela})")}
+        for tabela in sorted(tabelas_de_dado(conexao))
+        if "bd_id"
+        not in {
+            c[0]
+            for c in conexao.execute(
+                "SELECT column_name FROM information_schema.columns"
+                " WHERE table_schema = current_schema() AND table_name = %s",
+                (tabela,),
+            )
+        }
     ]
 
     assert sem_coluna == []
@@ -101,7 +108,7 @@ def test_guarda_pega_funcao_sem_bd_id(tmp_path):
         "    return conexao.execute('SELECT * FROM pessoa').fetchall()\n"
         "\n"
         "def listar_pessoas_do_bd(conexao, bd_id):\n"
-        "    return conexao.execute('SELECT * FROM pessoa WHERE bd_id = ?', (bd_id,)).fetchall()\n"
+        "    return conexao.execute('SELECT * FROM pessoa WHERE bd_id = %s', (bd_id,)).fetchall()\n"
     )
     (tmp_path / "falso.py").write_text(fonte)
     spec = importlib.util.spec_from_file_location("falso", tmp_path / "falso.py")

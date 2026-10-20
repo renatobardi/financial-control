@@ -29,17 +29,17 @@ def base(conexao):
     vaga = pessoas.abrir_vaga(conexao, bd, "V-1", squad, tema, cargo, "2026-01")
     for mes, horas in (("2026-01", 100), ("2026-02", 50)):
         conexao.execute(
-            "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (%s, %s, %s, %s, %s)",
             (bd, ana, tema, mes, horas),
         )
     conexao.execute(
-        "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status) VALUES (?, 'OC1', 'OC', ?, 'emitida')",
+        "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status) VALUES (%s, 'OC1', 'OC', %s, 'emitida')",
         (bd, dem),
     )
     compra = conexao.execute("SELECT id FROM compra").fetchone()[0]
     conexao.execute(
         "INSERT INTO compra_mes (bd_id, compra_id, mes, valor_liquido_centavos)"
-        " VALUES (?, ?, '2026-02', 100000)",
+        " VALUES (%s, %s, '2026-02', 100000)",
         (bd, compra),
     )
     conexao.commit()
@@ -184,13 +184,13 @@ def _quinquenal(conexao, bd):
     dem = portfolio.criar_demanda(conexao, bd, "D-2", ini, "Dem 2", "OPEX", squad)
     portfolio.criar_tema(conexao, bd, "T-2", dem, "Tema 2", agrup)
     conexao.execute(
-        "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status) VALUES (?, 'OC2', 'OC', ?, 'emitida')",
+        "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status) VALUES (%s, 'OC2', 'OC', %s, 'emitida')",
         (bd, dem),
     )
     compra = conexao.execute("SELECT id FROM compra WHERE numero = 'OC2'").fetchone()[0]
     conexao.execute(
         "INSERT INTO compra_mes (bd_id, compra_id, mes, valor_liquido_centavos)"
-        " VALUES (?, ?, '2026-02', 300000)",
+        " VALUES (%s, %s, '2026-02', 300000)",
         (bd, compra),
     )
     conexao.commit()
