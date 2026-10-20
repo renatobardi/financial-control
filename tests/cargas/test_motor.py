@@ -57,7 +57,7 @@ def test_valor_diferente_na_mesma_chave_atualiza(base):
 
 def test_mes_fechado_e_rejeitado_com_mes_fechado(base):
     base.conexao.execute(
-        "INSERT INTO mes_fechado (bd_id, mes, fechado_em) VALUES (?, '2026-08', 'x')", (base.bd,)
+        "INSERT INTO mes_fechado (bd_id, mes, fechado_em) VALUES (%s, '2026-08', 'x')", (base.bd,)
     )
     base.conexao.commit()
 
@@ -137,7 +137,7 @@ def test_nao_desfaz_carga_se_outra_posterior_mexeu_nos_mesmos_registros(base):
 def test_nao_desfaz_carga_que_mexeu_em_mes_que_depois_fechou(base):
     rel = _carga(base, HORAS + "F0101;T-10;2026;9;100\n")
     base.conexao.execute(
-        "INSERT INTO mes_fechado (bd_id, mes, fechado_em) VALUES (?, '2026-09', 'x')", (base.bd,)
+        "INSERT INTO mes_fechado (bd_id, mes, fechado_em) VALUES (%s, '2026-09', 'x')", (base.bd,)
     )
     base.conexao.commit()
 

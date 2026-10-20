@@ -27,7 +27,7 @@ def base(conexao):
     pessoa = pessoas.criar_pessoa(conexao, bd, "F1", "Ana", squad, cargo, tema, "2025-01", None)
     for mes in (1, 2, 3):
         conexao.execute(
-            "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (?, ?, ?, ?, 100)",
+            "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (%s, %s, %s, %s, 100)",
             (bd, pessoa, tema, f"2026-{mes:02d}"),
         )
     conexao.commit()

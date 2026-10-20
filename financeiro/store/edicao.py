@@ -1,22 +1,22 @@
 """Edição simples de cadastros: renomear e trocar o nível do cargo."""
 
-import sqlite3
+import psycopg
 
 # Cada tabela editável tem o seu SQL fixo: nome de tabela nunca vem de fora.
 _RENOMEAR = {
-    "empresa": "UPDATE empresa SET nome = ? WHERE bd_id = ? AND id = ?",
-    "cargo": "UPDATE cargo SET nome = ? WHERE bd_id = ? AND id = ?",
-    "iniciativa": "UPDATE iniciativa SET nome = ? WHERE bd_id = ? AND id = ?",
-    "demanda": "UPDATE demanda SET nome = ? WHERE bd_id = ? AND id = ?",
-    "tema": "UPDATE tema SET nome = ? WHERE bd_id = ? AND id = ?",
-    "agrupamento": "UPDATE agrupamento SET nome = ? WHERE bd_id = ? AND id = ?",
-    "fornecedor": "UPDATE fornecedor SET nome = ? WHERE bd_id = ? AND id = ?",
+    "empresa": "UPDATE empresa SET nome = %s WHERE bd_id = %s AND id = %s",
+    "cargo": "UPDATE cargo SET nome = %s WHERE bd_id = %s AND id = %s",
+    "iniciativa": "UPDATE iniciativa SET nome = %s WHERE bd_id = %s AND id = %s",
+    "demanda": "UPDATE demanda SET nome = %s WHERE bd_id = %s AND id = %s",
+    "tema": "UPDATE tema SET nome = %s WHERE bd_id = %s AND id = %s",
+    "agrupamento": "UPDATE agrupamento SET nome = %s WHERE bd_id = %s AND id = %s",
+    "fornecedor": "UPDATE fornecedor SET nome = %s WHERE bd_id = %s AND id = %s",
 }
 RENOMEAVEIS = frozenset(_RENOMEAR)
 
 
 def renomear(
-    conexao: sqlite3.Connection, tabela: str, bd_id: int, registro_id: int, nome: str
+    conexao: psycopg.Connection, tabela: str, bd_id: int, registro_id: int, nome: str
 ) -> None:
     if tabela not in _RENOMEAR:
         raise ValueError(f"tabela não editável: {tabela!r}")
@@ -24,26 +24,29 @@ def renomear(
     conexao.commit()
 
 
-def alterar_nivel_cargo(conexao: sqlite3.Connection, bd_id: int, cargo_id: int, nivel: str) -> None:
+def alterar_nivel_cargo(conexao: psycopg.Connection, bd_id: int, cargo_id: int, nivel: str) -> None:
     conexao.execute(
-        "UPDATE cargo SET nivel = ? WHERE bd_id = ? AND id = ?", (nivel, bd_id, cargo_id)
+        "UPDATE cargo SET nivel = %s WHERE bd_id = %s AND id = %s", (nivel, bd_id, cargo_id)
     )
     conexao.commit()
 
 
 # (tabela, coluna) que a tela pode trocar, cada um com o seu SQL fixo.
 _DEFINIR = {
-    ("empresa", "tipo"): "UPDATE empresa SET tipo = ? WHERE bd_id = ? AND id = ?",
-    ("cargo", "nivel"): "UPDATE cargo SET nivel = ? WHERE bd_id = ? AND id = ?",
-    ("demanda", "tipo"): "UPDATE demanda SET tipo = ? WHERE bd_id = ? AND id = ?",
-    ("demanda", "iniciativa_id"): "UPDATE demanda SET iniciativa_id = ? WHERE bd_id = ? AND id = ?",
-    ("tema", "agrupamento_id"): "UPDATE tema SET agrupamento_id = ? WHERE bd_id = ? AND id = ?",
-    ("tema", "demanda_id"): "UPDATE tema SET demanda_id = ? WHERE bd_id = ? AND id = ?",
+    ("empresa", "tipo"): "UPDATE empresa SET tipo = %s WHERE bd_id = %s AND id = %s",
+    ("cargo", "nivel"): "UPDATE cargo SET nivel = %s WHERE bd_id = %s AND id = %s",
+    ("demanda", "tipo"): "UPDATE demanda SET tipo = %s WHERE bd_id = %s AND id = %s",
+    (
+        "demanda",
+        "iniciativa_id",
+    ): "UPDATE demanda SET iniciativa_id = %s WHERE bd_id = %s AND id = %s",
+    ("tema", "agrupamento_id"): "UPDATE tema SET agrupamento_id = %s WHERE bd_id = %s AND id = %s",
+    ("tema", "demanda_id"): "UPDATE tema SET demanda_id = %s WHERE bd_id = %s AND id = %s",
 }
 
 
 def definir(
-    conexao: sqlite3.Connection,
+    conexao: psycopg.Connection,
     tabela: str,
     coluna: str,
     bd_id: int,

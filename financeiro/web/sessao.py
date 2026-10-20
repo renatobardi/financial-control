@@ -24,11 +24,8 @@ class Contexto:
 
 
 def conexao_db(request: Request) -> Iterator[store.Conexao]:
-    conexao = store.abrir(request.app.state.cfg.caminho_bd)
-    try:
+    with request.app.state.pool.connection() as conexao:
         yield conexao
-    finally:
-        conexao.close()
 
 
 def contexto_opcional(

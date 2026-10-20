@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from financeiro import config, store
 from financeiro.web.app import criar_app
+from tests.banco import URL_TESTE, url_do_schema
 
 
 class Relogio:
@@ -22,10 +23,10 @@ class Relogio:
 
 
 @pytest.fixture
-def ambiente(tmp_path):
+def ambiente(schema_de_teste):
     cfg = config.carregar(
         {
-            "FINANCEIRO_BD": str(tmp_path / "f.db"),
+            "FINANCEIRO_DATABASE_URL": url_do_schema(schema_de_teste),
             "FINANCEIRO_SEGREDO": "segredo-de-teste",
             "FINANCEIRO_MAX_TENTATIVAS": "3",
         }
@@ -33,6 +34,6 @@ def ambiente(tmp_path):
     relogio = Relogio()
     app = criar_app(cfg, agora=relogio)
     with TestClient(app, base_url="https://testserver", follow_redirects=False) as cliente:
-        conexao = store.abrir(cfg.caminho_bd)
+        conexao = store.abrir(URL_TESTE, schema=schema_de_teste)
         yield SimpleNamespace(cliente=cliente, cfg=cfg, relogio=relogio, conexao=conexao)
         conexao.close()

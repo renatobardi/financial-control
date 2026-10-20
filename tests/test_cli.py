@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from financeiro import cli
+from tests.banco import URL_TESTE, url_do_schema
 
 
 def _servidor_falso():
@@ -46,25 +47,25 @@ def test_servir_aceita_host():
     assert chamadas[0][1] == "0.0.0.0"
 
 
-# ---- comandos de implantação: criar-admin, semear e backup ----
+# ---- comandos de implantação: criar-admin e semear ----
 
 
-def _ambiente(tmp_path, **extra):
-    return {"FINANCEIRO_BD": str(tmp_path / "f.db"), **extra}
+def _ambiente(schema, **extra):
+    return {"FINANCEIRO_DATABASE_URL": url_do_schema(schema), **extra}
 
 
-def _consultar(tmp_path, sql, *params):
+def _consultar(schema, sql, *params):
     from financeiro import store
 
-    conexao = store.abrir(tmp_path / "f.db")
+    conexao = store.abrir(URL_TESTE, schema=schema)
     try:
         return conexao.execute(sql, params).fetchall()
     finally:
         conexao.close()
 
 
-def test_criar_admin_cria_bd_usuario_e_papel_com_senha_do_ambiente(tmp_path, capsys):
-    ambiente = _ambiente(tmp_path, FINANCEIRO_ADMIN_SENHA="uma-senha-forte-1")
+def test_criar_admin_cria_bd_usuario_e_papel_com_senha_do_ambiente(schema_de_teste, capsys):
+    ambiente = _ambiente(schema_de_teste, FINANCEIRO_ADMIN_SENHA="uma-senha-forte-1")
 
     codigo = cli.main(
         ["criar-admin", "--email", "renato@empresa.com", "--nome", "Renato", "--bd", "BD Mobility"],
@@ -72,47 +73,52 @@ def test_criar_admin_cria_bd_usuario_e_papel_com_senha_do_ambiente(tmp_path, cap
     )
 
     assert codigo == 0
-    assert _consultar(tmp_path, "SELECT nome FROM bd") == [("BD Mobility",)]
+    assert _consultar(schema_de_teste, "SELECT nome FROM bd") == [("BD Mobility",)]
     papel = _consultar(
-        tmp_path,
-        "SELECT m.papel FROM membro m JOIN usuario u ON u.id = m.usuario_id WHERE u.email = ?",
+        schema_de_teste,
+        "SELECT m.papel FROM membro m JOIN usuario u ON u.id = m.usuario_id WHERE u.email = %s",
         "renato@empresa.com",
     )
     assert papel == [("Admin",)]
-    hash_guardado = _consultar(tmp_path, "SELECT senha_hash FROM usuario")[0][0]
+    hash_guardado = _consultar(schema_de_teste, "SELECT senha_hash FROM usuario")[0][0]
     assert hash_guardado.startswith("scrypt$") and "uma-senha-forte-1" not in hash_guardado
     assert "uma-senha-forte-1" not in capsys.readouterr().out
 
 
-def test_criar_admin_nao_imprime_nem_aceita_senha_curta_ou_ausente(tmp_path, capsys):
+def test_criar_admin_nao_imprime_nem_aceita_senha_curta_ou_ausente(schema_de_teste, capsys):
     argumentos = ["criar-admin", "--email", "a@empresa.com", "--nome", "A", "--bd", "BD"]
 
-    sem_senha = cli.main(argumentos, ambiente=_ambiente(tmp_path))
-    curta = cli.main(argumentos, ambiente=_ambiente(tmp_path, FINANCEIRO_ADMIN_SENHA="curta"))
+    sem_senha = cli.main(argumentos, ambiente=_ambiente(schema_de_teste))
+    curta = cli.main(
+        argumentos, ambiente=_ambiente(schema_de_teste, FINANCEIRO_ADMIN_SENHA="curta")
+    )
 
     assert (sem_senha, curta) == (2, 2)
     erro = capsys.readouterr().err
     assert "FINANCEIRO_ADMIN_SENHA" in erro and "8 caracteres" in erro
-    assert _consultar(tmp_path, "SELECT COUNT(*) FROM usuario") == [(0,)]
+    assert _consultar(schema_de_teste, "SELECT COUNT(*) FROM usuario") == [(0,)]
 
 
-def test_criar_admin_repetido_nao_duplica_nem_troca_a_senha(tmp_path):
+def test_criar_admin_repetido_nao_duplica_nem_troca_a_senha(schema_de_teste):
     argumentos = ["criar-admin", "--email", "a@empresa.com", "--nome", "A", "--bd", "BD"]
-    cli.main(argumentos, ambiente=_ambiente(tmp_path, FINANCEIRO_ADMIN_SENHA="primeira-senha-1"))
-    antes = _consultar(tmp_path, "SELECT senha_hash FROM usuario")
+    cli.main(
+        argumentos, ambiente=_ambiente(schema_de_teste, FINANCEIRO_ADMIN_SENHA="primeira-senha-1")
+    )
+    antes = _consultar(schema_de_teste, "SELECT senha_hash FROM usuario")
 
     codigo = cli.main(
-        argumentos, ambiente=_ambiente(tmp_path, FINANCEIRO_ADMIN_SENHA="outra-senha-qualquer")
+        argumentos,
+        ambiente=_ambiente(schema_de_teste, FINANCEIRO_ADMIN_SENHA="outra-senha-qualquer"),
     )
 
     assert codigo == 0
-    assert _consultar(tmp_path, "SELECT senha_hash FROM usuario") == antes
-    assert _consultar(tmp_path, "SELECT COUNT(*) FROM usuario") == [(1,)]
-    assert _consultar(tmp_path, "SELECT COUNT(*) FROM membro") == [(1,)]
+    assert _consultar(schema_de_teste, "SELECT senha_hash FROM usuario") == antes
+    assert _consultar(schema_de_teste, "SELECT COUNT(*) FROM usuario") == [(1,)]
+    assert _consultar(schema_de_teste, "SELECT COUNT(*) FROM membro") == [(1,)]
 
 
-def test_criar_admin_exige_email_nome_e_bd(tmp_path, capsys):
-    ambiente = _ambiente(tmp_path, FINANCEIRO_ADMIN_SENHA="uma-senha-forte-1")
+def test_criar_admin_exige_email_nome_e_bd(schema_de_teste, capsys):
+    ambiente = _ambiente(schema_de_teste, FINANCEIRO_ADMIN_SENHA="uma-senha-forte-1")
 
     assert cli.main(["criar-admin", "--email", "a@empresa.com"], ambiente=ambiente) == 2
     assert (
@@ -123,44 +129,27 @@ def test_criar_admin_exige_email_nome_e_bd(tmp_path, capsys):
     )
 
 
-def test_semear_carrega_dados_de_exemplo_e_recusa_banco_com_usuario(tmp_path, capsys):
-    ambiente = _ambiente(tmp_path, FINANCEIRO_ADMIN_SENHA="uma-senha-forte-1")
+def test_semear_carrega_dados_de_exemplo_e_recusa_banco_com_usuario(schema_de_teste, capsys):
+    ambiente = _ambiente(schema_de_teste, FINANCEIRO_ADMIN_SENHA="uma-senha-forte-1")
 
     primeira = cli.main(["semear"], ambiente=ambiente)
     segunda = cli.main(["semear"], ambiente=ambiente)
 
     assert primeira == 0 and segunda == 1
     assert "não está vazio" in capsys.readouterr().err
-    assert _consultar(tmp_path, "SELECT COUNT(*) FROM pessoa")[0][0] >= 1
-    assert _consultar(tmp_path, "SELECT COUNT(*) FROM iniciativa")[0][0] >= 1
+    assert _consultar(schema_de_teste, "SELECT COUNT(*) FROM pessoa")[0][0] >= 1
+    assert _consultar(schema_de_teste, "SELECT COUNT(*) FROM iniciativa")[0][0] >= 1
 
 
-def test_backup_gera_copia_consistente_e_nao_sobrescreve(tmp_path, capsys):
-    ambiente = _ambiente(tmp_path, FINANCEIRO_ADMIN_SENHA="uma-senha-forte-1")
-    cli.main(["semear"], ambiente=ambiente)
-    destino = tmp_path / "copia.db"
-
-    primeiro = cli.main(["backup", "--destino", str(destino)], ambiente=ambiente)
-    segundo = cli.main(["backup", "--destino", str(destino)], ambiente=ambiente)
-
-    assert primeiro == 0 and segundo == 1
-    from financeiro import store
-
-    copia = store.abrir(destino)
-    assert copia.execute("SELECT COUNT(*) FROM pessoa").fetchone()[0] >= 1
-    assert copia.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
-    assert "já existe" in capsys.readouterr().err
-
-
-def test_desativar_2fa_tira_a_verificacao_de_quem_perdeu_o_celular(tmp_path, capsys):
+def test_desativar_2fa_tira_a_verificacao_de_quem_perdeu_o_celular(schema_de_teste, capsys):
     from financeiro import doisfatores, store
     from financeiro.store import acesso
 
-    ambiente = _ambiente(tmp_path, FINANCEIRO_ADMIN_SENHA="uma-senha-forte-1")
+    ambiente = _ambiente(schema_de_teste, FINANCEIRO_ADMIN_SENHA="uma-senha-forte-1")
     cli.main(
         ["criar-admin", "--email", "a@empresa.com", "--nome", "A", "--bd", "BD"], ambiente=ambiente
     )
-    conexao = store.abrir(tmp_path / "f.db")
+    conexao = store.abrir(URL_TESTE, schema=schema_de_teste)
     usuario = acesso.achar_usuario_por_email(conexao, "a@empresa.com")
     doisfatores.iniciar_ativacao(conexao, usuario.id)
     conexao.execute("UPDATE segundo_fator SET ativo = 1")
@@ -170,12 +159,12 @@ def test_desativar_2fa_tira_a_verificacao_de_quem_perdeu_o_celular(tmp_path, cap
     codigo = cli.main(["desativar-2fa", "--email", "a@empresa.com"], ambiente=ambiente)
 
     assert codigo == 0
-    assert _consultar(tmp_path, "SELECT COUNT(*) FROM segundo_fator") == [(0,)]
+    assert _consultar(schema_de_teste, "SELECT COUNT(*) FROM segundo_fator") == [(0,)]
     assert "a@empresa.com" in capsys.readouterr().out
 
 
-def test_desativar_2fa_de_email_desconhecido_falha(tmp_path, capsys):
-    ambiente = _ambiente(tmp_path)
+def test_desativar_2fa_de_email_desconhecido_falha(schema_de_teste, capsys):
+    ambiente = _ambiente(schema_de_teste)
 
     codigo = cli.main(["desativar-2fa", "--email", "ninguem@empresa.com"], ambiente=ambiente)
 

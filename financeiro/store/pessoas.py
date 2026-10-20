@@ -1,5 +1,6 @@
-import sqlite3
 from typing import NamedTuple
+
+import psycopg
 
 
 class VagaNaoAberta(Exception):
@@ -29,7 +30,7 @@ class Vaga(NamedTuple):
 
 
 def criar_pessoa(
-    conexao: sqlite3.Connection,
+    conexao: psycopg.Connection,
     bd_id: int,
     matricula: str,
     nome: str,
@@ -41,11 +42,11 @@ def criar_pessoa(
 ) -> int:
     cursor = conexao.execute(
         "INSERT INTO pessoa (bd_id, matricula, nome, org_id, cargo_id, tema_id, admissao,"
-        " desligamento) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        " desligamento) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
         (bd_id, matricula, nome, org_id, cargo_id, tema_id, admissao, desligamento),
     )
     conexao.commit()
-    return cursor.lastrowid
+    return cursor.fetchone()[0]
 
 
 _SELECT_PESSOA = (
@@ -57,22 +58,22 @@ _SELECT_PESSOA = (
 )
 
 
-def achar_pessoa(conexao: sqlite3.Connection, bd_id: int, pessoa_id: int) -> Pessoa | None:
+def achar_pessoa(conexao: psycopg.Connection, bd_id: int, pessoa_id: int) -> Pessoa | None:
     linha = conexao.execute(
-        _SELECT_PESSOA + " WHERE p.bd_id = ? AND p.id = ?", (bd_id, pessoa_id)
+        _SELECT_PESSOA + " WHERE p.bd_id = %s AND p.id = %s", (bd_id, pessoa_id)
     ).fetchone()
     return Pessoa(*linha) if linha else None
 
 
-def listar_pessoas(conexao: sqlite3.Connection, bd_id: int) -> list[Pessoa]:
+def listar_pessoas(conexao: psycopg.Connection, bd_id: int) -> list[Pessoa]:
     linhas = conexao.execute(
-        _SELECT_PESSOA + " WHERE p.bd_id = ? ORDER BY p.id", (bd_id,)
+        _SELECT_PESSOA + " WHERE p.bd_id = %s ORDER BY p.id", (bd_id,)
     ).fetchall()
     return [Pessoa(*linha) for linha in linhas]
 
 
 def abrir_vaga(
-    conexao: sqlite3.Connection,
+    conexao: psycopg.Connection,
     bd_id: int,
     codigo: str,
     org_id: int,
@@ -82,39 +83,40 @@ def abrir_vaga(
 ) -> int:
     cursor = conexao.execute(
         "INSERT INTO vaga (bd_id, codigo, org_id, tema_id, cargo_id, aberta_em)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
+        " VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
         (bd_id, codigo, org_id, tema_id, cargo_id, aberta_em),
     )
     conexao.commit()
-    return cursor.lastrowid
+    return cursor.fetchone()[0]
 
 
-def listar_vagas(conexao: sqlite3.Connection, bd_id: int) -> list[Vaga]:
+def listar_vagas(conexao: psycopg.Connection, bd_id: int) -> list[Vaga]:
     linhas = conexao.execute(
         "SELECT id, codigo, org_id, tema_id, cargo_id, aberta_em, estado, pessoa_id"
-        " FROM vaga WHERE bd_id = ? ORDER BY id",
+        " FROM vaga WHERE bd_id = %s ORDER BY id",
         (bd_id,),
     ).fetchall()
     return [Vaga(*linha) for linha in linhas]
 
 
-def preencher_vaga(conexao: sqlite3.Connection, bd_id: int, vaga_id: int, pessoa_id: int) -> None:
+def preencher_vaga(conexao: psycopg.Connection, bd_id: int, vaga_id: int, pessoa_id: int) -> None:
     try:
         cursor = conexao.execute(
-            "UPDATE vaga SET estado = 'preenchida', pessoa_id = ?"
-            " WHERE bd_id = ? AND id = ? AND estado = 'aberta'",
+            "UPDATE vaga SET estado = 'preenchida', pessoa_id = %s"
+            " WHERE bd_id = %s AND id = %s AND estado = 'aberta'",
             (pessoa_id, bd_id, vaga_id),
         )
-    except sqlite3.IntegrityError as erro:
+    except psycopg.errors.IntegrityError as erro:
+        conexao.rollback()
         raise VagaNaoAberta(vaga_id) from erro
     if cursor.rowcount == 0:
         raise VagaNaoAberta(vaga_id)
     conexao.commit()
 
 
-def cancelar_vaga(conexao: sqlite3.Connection, bd_id: int, vaga_id: int) -> None:
+def cancelar_vaga(conexao: psycopg.Connection, bd_id: int, vaga_id: int) -> None:
     cursor = conexao.execute(
-        "UPDATE vaga SET estado = 'cancelada' WHERE bd_id = ? AND id = ? AND estado = 'aberta'",
+        "UPDATE vaga SET estado = 'cancelada' WHERE bd_id = %s AND id = %s AND estado = 'aberta'",
         (bd_id, vaga_id),
     )
     if cursor.rowcount == 0:
@@ -138,7 +140,7 @@ class PessoaDetalhe(NamedTuple):
     desligamento: str | None
 
 
-def listar_detalhe(conexao: sqlite3.Connection, bd_id: int) -> list[PessoaDetalhe]:
+def listar_detalhe(conexao: psycopg.Connection, bd_id: int) -> list[PessoaDetalhe]:
     linhas = conexao.execute(
         "SELECT p.id, p.matricula, p.nome, p.org_id, o.nome, p.cargo_id, c.nome, e.nome, e.tipo,"
         " p.tema_id, t.codigo, p.admissao, p.desligamento FROM pessoa p"
@@ -146,14 +148,14 @@ def listar_detalhe(conexao: sqlite3.Connection, bd_id: int) -> list[PessoaDetalh
         " JOIN cargo c ON c.bd_id = p.bd_id AND c.id = p.cargo_id"
         " JOIN empresa e ON e.bd_id = c.bd_id AND e.id = c.empresa_id"
         " JOIN tema t ON t.bd_id = p.bd_id AND t.id = p.tema_id"
-        " WHERE p.bd_id = ? ORDER BY p.nome",
+        " WHERE p.bd_id = %s ORDER BY p.nome",
         (bd_id,),
     ).fetchall()
     return [PessoaDetalhe(*linha) for linha in linhas]
 
 
 def atualizar_pessoa(
-    conexao: sqlite3.Connection,
+    conexao: psycopg.Connection,
     bd_id: int,
     pessoa_id: int,
     org_id: int,
@@ -163,8 +165,8 @@ def atualizar_pessoa(
     nome: str | None = None,
 ) -> None:
     conexao.execute(
-        "UPDATE pessoa SET org_id = ?, cargo_id = ?, tema_id = ?, desligamento = ?,"
-        " nome = COALESCE(?, nome) WHERE bd_id = ? AND id = ?",
+        "UPDATE pessoa SET org_id = %s, cargo_id = %s, tema_id = %s, desligamento = %s,"
+        " nome = COALESCE(%s, nome) WHERE bd_id = %s AND id = %s",
         (org_id, cargo_id, tema_id, desligamento, nome, bd_id, pessoa_id),
     )
     conexao.commit()

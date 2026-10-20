@@ -1,14 +1,7 @@
 import pytest
 
-from financeiro import membros, store
+from financeiro import membros
 from financeiro.store import acesso
-
-
-@pytest.fixture
-def conexao():
-    c = store.abrir(":memory:")
-    store.migrar(c, store.PASTA_MIGRACOES)
-    return c
 
 
 def _bd_com_admin(conexao):

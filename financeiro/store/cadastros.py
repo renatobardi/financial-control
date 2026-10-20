@@ -1,5 +1,6 @@
-import sqlite3
 from typing import NamedTuple
+
+import psycopg
 
 from financeiro import vigencia
 
@@ -36,17 +37,18 @@ class Markup(NamedTuple):
 # ---- Empresa ----
 
 
-def criar_empresa(conexao: sqlite3.Connection, bd_id: int, nome: str, tipo: str) -> int:
+def criar_empresa(conexao: psycopg.Connection, bd_id: int, nome: str, tipo: str) -> int:
     cursor = conexao.execute(
-        "INSERT INTO empresa (bd_id, nome, tipo) VALUES (?, ?, ?)", (bd_id, nome, tipo)
+        "INSERT INTO empresa (bd_id, nome, tipo) VALUES (%s, %s, %s) RETURNING id",
+        (bd_id, nome, tipo),
     )
     conexao.commit()
-    return cursor.lastrowid
+    return cursor.fetchone()[0]
 
 
-def listar_empresas(conexao: sqlite3.Connection, bd_id: int) -> list[Empresa]:
+def listar_empresas(conexao: psycopg.Connection, bd_id: int) -> list[Empresa]:
     linhas = conexao.execute(
-        "SELECT id, nome, tipo FROM empresa WHERE bd_id = ? ORDER BY id", (bd_id,)
+        "SELECT id, nome, tipo FROM empresa WHERE bd_id = %s ORDER BY id", (bd_id,)
     ).fetchall()
     return [Empresa(*linha) for linha in linhas]
 
@@ -55,14 +57,14 @@ def listar_empresas(conexao: sqlite3.Connection, bd_id: int) -> list[Empresa]:
 
 
 def criar_cargo(
-    conexao: sqlite3.Connection, bd_id: int, empresa_id: int, nome: str, nivel: str
+    conexao: psycopg.Connection, bd_id: int, empresa_id: int, nome: str, nivel: str
 ) -> int:
     cursor = conexao.execute(
-        "INSERT INTO cargo (bd_id, empresa_id, nome, nivel) VALUES (?, ?, ?, ?)",
+        "INSERT INTO cargo (bd_id, empresa_id, nome, nivel) VALUES (%s, %s, %s, %s) RETURNING id",
         (bd_id, empresa_id, nome, nivel),
     )
     conexao.commit()
-    return cursor.lastrowid
+    return cursor.fetchone()[0]
 
 
 _SELECT_CARGO = (
@@ -71,16 +73,16 @@ _SELECT_CARGO = (
 )
 
 
-def achar_cargo(conexao: sqlite3.Connection, bd_id: int, cargo_id: int) -> Cargo | None:
+def achar_cargo(conexao: psycopg.Connection, bd_id: int, cargo_id: int) -> Cargo | None:
     linha = conexao.execute(
-        _SELECT_CARGO + " WHERE c.bd_id = ? AND c.id = ?", (bd_id, cargo_id)
+        _SELECT_CARGO + " WHERE c.bd_id = %s AND c.id = %s", (bd_id, cargo_id)
     ).fetchone()
     return Cargo(*linha) if linha else None
 
 
-def listar_cargos(conexao: sqlite3.Connection, bd_id: int) -> list[Cargo]:
+def listar_cargos(conexao: psycopg.Connection, bd_id: int) -> list[Cargo]:
     linhas = conexao.execute(
-        _SELECT_CARGO + " WHERE c.bd_id = ? ORDER BY c.id", (bd_id,)
+        _SELECT_CARGO + " WHERE c.bd_id = %s ORDER BY c.id", (bd_id,)
     ).fetchall()
     return [Cargo(*linha) for linha in linhas]
 
@@ -88,17 +90,17 @@ def listar_cargos(conexao: sqlite3.Connection, bd_id: int) -> list[Cargo]:
 # ---- Tarifa (vigência por cargo; o cargo já é o par cargo + empresa) ----
 
 
-def tarifas_do_cargo(conexao: sqlite3.Connection, bd_id: int, cargo_id: int) -> list[Tarifa]:
+def tarifas_do_cargo(conexao: psycopg.Connection, bd_id: int, cargo_id: int) -> list[Tarifa]:
     linhas = conexao.execute(
         "SELECT id, cargo_id, liquida_centavos, vigencia_ini, vigencia_fim FROM tarifa"
-        " WHERE bd_id = ? AND cargo_id = ? ORDER BY vigencia_ini",
+        " WHERE bd_id = %s AND cargo_id = %s ORDER BY vigencia_ini",
         (bd_id, cargo_id),
     ).fetchall()
     return [Tarifa(*linha) for linha in linhas]
 
 
 def definir_tarifa(
-    conexao: sqlite3.Connection, bd_id: int, cargo_id: int, liquida_centavos: int, a_partir_de: str
+    conexao: psycopg.Connection, bd_id: int, cargo_id: int, liquida_centavos: int, a_partir_de: str
 ) -> int:
     """Nova tarifa vigente a partir do mês. A aberta é encerrada no mês anterior.
 
@@ -109,25 +111,26 @@ def definir_tarifa(
     if existentes and a_partir_de <= max(t.inicio for t in existentes):
         raise vigencia.VigenciaSobreposta(a_partir_de)
     conexao.execute(
-        "UPDATE tarifa SET vigencia_fim = ?"
-        " WHERE bd_id = ? AND cargo_id = ? AND vigencia_fim IS NULL",
+        "UPDATE tarifa SET vigencia_fim = %s"
+        " WHERE bd_id = %s AND cargo_id = %s AND vigencia_fim IS NULL",
         (vigencia.mes_anterior(a_partir_de), bd_id, cargo_id),
     )
     cursor = conexao.execute(
-        "INSERT INTO tarifa (bd_id, cargo_id, liquida_centavos, vigencia_ini) VALUES (?, ?, ?, ?)",
+        "INSERT INTO tarifa (bd_id, cargo_id, liquida_centavos, vigencia_ini)"
+        " VALUES (%s, %s, %s, %s) RETURNING id",
         (bd_id, cargo_id, liquida_centavos, a_partir_de),
     )
     conexao.commit()
-    return cursor.lastrowid
+    return cursor.fetchone()[0]
 
 
 def corrigir_tarifa_vigente(
-    conexao: sqlite3.Connection, bd_id: int, cargo_id: int, liquida_centavos: int
+    conexao: psycopg.Connection, bd_id: int, cargo_id: int, liquida_centavos: int
 ) -> bool:
     """Troca o valor da tarifa de vigência aberta do cargo. False se o cargo não tem uma."""
     cursor = conexao.execute(
-        "UPDATE tarifa SET liquida_centavos = ?"
-        " WHERE bd_id = ? AND cargo_id = ? AND vigencia_fim IS NULL",
+        "UPDATE tarifa SET liquida_centavos = %s"
+        " WHERE bd_id = %s AND cargo_id = %s AND vigencia_fim IS NULL",
         (liquida_centavos, bd_id, cargo_id),
     )
     conexao.commit()
@@ -135,12 +138,12 @@ def corrigir_tarifa_vigente(
 
 
 def tarifa_vigente(
-    conexao: sqlite3.Connection, bd_id: int, cargo_id: int, mes: str
+    conexao: psycopg.Connection, bd_id: int, cargo_id: int, mes: str
 ) -> Tarifa | None:
     linha = conexao.execute(
         "SELECT id, cargo_id, liquida_centavos, vigencia_ini, vigencia_fim FROM tarifa"
-        " WHERE bd_id = ? AND cargo_id = ? AND vigencia_ini <= ?"
-        " AND ? <= COALESCE(vigencia_fim, '9999-12')",
+        " WHERE bd_id = %s AND cargo_id = %s AND vigencia_ini <= %s"
+        " AND %s <= COALESCE(vigencia_fim, '9999-12')",
         (bd_id, cargo_id, mes, mes),
     ).fetchone()
     return Tarifa(*linha) if linha else None
@@ -149,47 +152,47 @@ def tarifa_vigente(
 # ---- Markup (vigência por BD) ----
 
 
-def listar_markups(conexao: sqlite3.Connection, bd_id: int) -> list[Markup]:
+def listar_markups(conexao: psycopg.Connection, bd_id: int) -> list[Markup]:
     linhas = conexao.execute(
         "SELECT id, centesimos_pct, vigencia_ini, vigencia_fim FROM markup"
-        " WHERE bd_id = ? ORDER BY vigencia_ini",
+        " WHERE bd_id = %s ORDER BY vigencia_ini",
         (bd_id,),
     ).fetchall()
     return [Markup(*linha) for linha in linhas]
 
 
 def definir_markup(
-    conexao: sqlite3.Connection, bd_id: int, centesimos_pct: int, a_partir_de: str
+    conexao: psycopg.Connection, bd_id: int, centesimos_pct: int, a_partir_de: str
 ) -> int:
     vigencia.validar_mes(a_partir_de)
     existentes = listar_markups(conexao, bd_id)
     if existentes and a_partir_de <= max(m.inicio for m in existentes):
         raise vigencia.VigenciaSobreposta(a_partir_de)
     conexao.execute(
-        "UPDATE markup SET vigencia_fim = ? WHERE bd_id = ? AND vigencia_fim IS NULL",
+        "UPDATE markup SET vigencia_fim = %s WHERE bd_id = %s AND vigencia_fim IS NULL",
         (vigencia.mes_anterior(a_partir_de), bd_id),
     )
     cursor = conexao.execute(
-        "INSERT INTO markup (bd_id, centesimos_pct, vigencia_ini) VALUES (?, ?, ?)",
+        "INSERT INTO markup (bd_id, centesimos_pct, vigencia_ini) VALUES (%s, %s, %s) RETURNING id",
         (bd_id, centesimos_pct, a_partir_de),
     )
     conexao.commit()
-    return cursor.lastrowid
+    return cursor.fetchone()[0]
 
 
-def markup_vigente(conexao: sqlite3.Connection, bd_id: int, mes: str) -> Markup | None:
+def markup_vigente(conexao: psycopg.Connection, bd_id: int, mes: str) -> Markup | None:
     linha = conexao.execute(
         "SELECT id, centesimos_pct, vigencia_ini, vigencia_fim FROM markup"
-        " WHERE bd_id = ? AND vigencia_ini <= ? AND ? <= COALESCE(vigencia_fim, '9999-12')",
+        " WHERE bd_id = %s AND vigencia_ini <= %s AND %s <= COALESCE(vigencia_fim, '9999-12')",
         (bd_id, mes, mes),
     ).fetchone()
     return Markup(*linha) if linha else None
 
 
-def alterar_markup_vigente(conexao: sqlite3.Connection, bd_id: int, centesimos_pct: int) -> bool:
+def alterar_markup_vigente(conexao: psycopg.Connection, bd_id: int, centesimos_pct: int) -> bool:
     """Troca o percentual do markup vigente (o de vigência aberta). False se não há vigente."""
     cursor = conexao.execute(
-        "UPDATE markup SET centesimos_pct = ? WHERE bd_id = ? AND vigencia_fim IS NULL",
+        "UPDATE markup SET centesimos_pct = %s WHERE bd_id = %s AND vigencia_fim IS NULL",
         (centesimos_pct, bd_id),
     )
     conexao.commit()

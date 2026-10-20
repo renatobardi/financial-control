@@ -1,7 +1,6 @@
 import getpass
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from pathlib import Path
 
 from financeiro import administracao, config, doisfatores, store
 from financeiro.i18n import t
@@ -11,7 +10,6 @@ from financeiro.web.app import criar_app
 _COMANDOS = {
     "semear": "cli.semear",
     "criar-admin": "cli.criar_admin",
-    "backup": "cli.backup",
     "desativar-2fa": "cli.desativar_2fa",
 }
 
@@ -34,8 +32,7 @@ def _listar_comandos() -> None:
 
 
 def _abrir_banco(cfg: config.Config):
-    cfg.caminho_bd.parent.mkdir(parents=True, exist_ok=True)
-    conexao = store.abrir(cfg.caminho_bd)
+    conexao = store.abrir(cfg.url_bd)
     store.migrar(conexao, store.PASTA_MIGRACOES)
     return conexao
 
@@ -92,23 +89,6 @@ def _semear(cfg: config.Config) -> int:
     return 0
 
 
-def _backup(resto: Sequence[str], cfg: config.Config) -> int:
-    destino = Path(_opcao(resto, "--destino", ""))
-    if not str(destino) or str(destino) == ".":
-        print(t("cli.backup_sem_destino"), file=sys.stderr)
-        return 2
-    if destino.exists():
-        print(t("cli.backup_ja_existe", destino=destino), file=sys.stderr)
-        return 1
-    conexao = store.abrir(cfg.caminho_bd)
-    try:
-        store.backup(conexao, destino)
-    finally:
-        conexao.close()
-    print(t("cli.backup_ok", destino=destino))
-    return 0
-
-
 def main(
     argv: Sequence[str],
     *,
@@ -132,8 +112,6 @@ def main(
         return _desativar_2fa(resto, cfg)
     if comando == "semear":
         return _semear(cfg)
-    if comando == "backup":
-        return _backup(resto, cfg)
     print(t("cli.comando_desconhecido", comando=comando), file=sys.stderr)
     _listar_comandos()
     return 2

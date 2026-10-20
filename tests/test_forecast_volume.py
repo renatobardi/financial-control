@@ -16,9 +16,16 @@ LIMITE_SEGUNDOS = 20.0
 @pytest.fixture(scope="module")
 def volume():
     from financeiro import store
+    from tests.banco import URL_TESTE, schema_descartavel
 
-    conexao = store.abrir(":memory:")
-    store.migrar(conexao, store.PASTA_MIGRACOES)
+    with schema_descartavel() as schema:
+        conexao = store.abrir(URL_TESTE, schema=schema)
+        store.migrar(conexao, store.PASTA_MIGRACOES)
+        yield _montar_volume(conexao)
+        conexao.close()
+
+
+def _montar_volume(conexao):
     bd = acesso.criar_bd(conexao, "BD Volume", "BV")
     usuario = acesso.criar_usuario(conexao, "ana@empresa.com", "Ana", senha.gerar_hash("x"))
     tribo = organizacao.criar_org(conexao, bd, "Tribo", "Tribo", None, "G", "2025-01")
@@ -57,26 +64,26 @@ def volume():
     for i in range(200):
         conexao.execute(
             "INSERT INTO pessoa (bd_id, matricula, nome, org_id, cargo_id, tema_id, admissao)"
-            " VALUES (?, ?, ?, ?, ?, ?, '2025-01')",
+            " VALUES (%s, %s, %s, %s, %s, %s, '2025-01')",
             (bd, f"F{i:04d}", f"Pessoa {i}", squads[i % 8], cargos[i % 4], temas[i % 30]),
         )
     pessoas_ids = [r[0] for r in conexao.execute("SELECT id FROM pessoa ORDER BY id")]
     for i, pessoa in enumerate(pessoas_ids):
         for mes in range(1, 10):
             conexao.execute(
-                "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (%s, %s, %s, %s, %s)",
                 (bd, pessoa, temas[i % 30], f"2026-{mes:02d}", 120 + (i % 40)),
             )
     for i in range(60):
         conexao.execute(
-            "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status) VALUES (?, ?, 'OC', ?, 'emitida')",
+            "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status) VALUES (%s, %s, 'OC', %s, 'emitida')",
             (bd, f"OC{i:04d}", demandas[i % 20]),
         )
     for compra in [r[0] for r in conexao.execute("SELECT id FROM compra")]:
         for mes in range(1, 13):
             conexao.execute(
                 "INSERT INTO compra_mes (bd_id, compra_id, mes, valor_liquido_centavos)"
-                " VALUES (?, ?, ?, 250000)",
+                " VALUES (%s, %s, %s, 250000)",
                 (bd, compra, f"2026-{mes:02d}"),
             )
     conexao.commit()

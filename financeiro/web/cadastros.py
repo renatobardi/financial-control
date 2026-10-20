@@ -119,11 +119,15 @@ def _mes(dados: dict[str, str], nome: str) -> str:
         raise ErroCadastro("cadastros.erro_mes") from erro
 
 
-def _guardar(chamada: Callable[[], object]) -> None:
-    """Converte as violações do banco em erro de cadastro com mensagem."""
+def _guardar(conexao: Conexao, chamada: Callable[[], object]) -> None:
+    """Converte as violações do banco em erro de cadastro com mensagem.
+
+    No Postgres uma violação aborta a transação: desfaz, para a conexão seguir usável.
+    """
     try:
         chamada()
     except ErroDeIntegridade as erro:
+        conexao.rollback()
         raise ErroCadastro("cadastros.erro_duplicado_ou_invalido") from erro
 
 
@@ -133,7 +137,10 @@ def _guardar(chamada: Callable[[], object]) -> None:
 def _renomear(tabela: str):
     def agir(conexao: Conexao, bd_id: int, dados: dict[str, str], mes_atual: str) -> str:
         registro = _inteiro(dados, "id")
-        _guardar(lambda: edicao.renomear(conexao, tabela, bd_id, registro, _texto(dados, "nome")))
+        _guardar(
+            conexao,
+            lambda: edicao.renomear(conexao, tabela, bd_id, registro, _texto(dados, "nome")),
+        )
         return "cadastros.ok_salvo"
 
     return agir
@@ -194,9 +201,10 @@ def _reorganizar(conexao, bd_id, dados, mes_atual):
 
 def _iniciativa(conexao, bd_id, dados, mes_atual):
     _guardar(
+        conexao,
         lambda: portfolio.criar_iniciativa(
             conexao, bd_id, _texto(dados, "codigo"), _texto(dados, "nome")
-        )
+        ),
     )
     return "cadastros.ok_salvo"
 
@@ -206,6 +214,7 @@ def _demanda(conexao, bd_id, dados, mes_atual):
     if tipo not in TIPOS_DEMANDA:
         raise ErroCadastro("cadastros.erro_campo_obrigatorio")
     _guardar(
+        conexao,
         lambda: portfolio.criar_demanda(
             conexao,
             bd_id,
@@ -214,13 +223,14 @@ def _demanda(conexao, bd_id, dados, mes_atual):
             _texto(dados, "nome"),
             tipo,
             _inteiro(dados, "squad_id", True),
-        )
+        ),
     )
     return "cadastros.ok_salvo"
 
 
 def _tema(conexao, bd_id, dados, mes_atual):
     _guardar(
+        conexao,
         lambda: portfolio.criar_tema(
             conexao,
             bd_id,
@@ -228,13 +238,13 @@ def _tema(conexao, bd_id, dados, mes_atual):
             _inteiro(dados, "demanda_id"),
             _texto(dados, "nome"),
             _inteiro(dados, "agrupamento_id"),
-        )
+        ),
     )
     return "cadastros.ok_salvo"
 
 
 def _agrupamento(conexao, bd_id, dados, mes_atual):
-    _guardar(lambda: portfolio.criar_agrupamento(conexao, bd_id, _texto(dados, "nome")))
+    _guardar(conexao, lambda: portfolio.criar_agrupamento(conexao, bd_id, _texto(dados, "nome")))
     return "cadastros.ok_salvo"
 
 
@@ -242,7 +252,7 @@ def _empresa(conexao, bd_id, dados, mes_atual):
     tipo = _texto(dados, "tipo")
     if tipo not in TIPOS_EMPRESA:
         raise ErroCadastro("cadastros.erro_campo_obrigatorio")
-    _guardar(lambda: cadastros.criar_empresa(conexao, bd_id, _texto(dados, "nome"), tipo))
+    _guardar(conexao, lambda: cadastros.criar_empresa(conexao, bd_id, _texto(dados, "nome"), tipo))
     return "cadastros.ok_salvo"
 
 
@@ -259,14 +269,17 @@ def _cargo(conexao, bd_id, dados, mes_atual):
         inicio = _mes(dados, "a_partir_de")
     cargo_id = []
     _guardar(
+        conexao,
         lambda: cargo_id.append(
             cadastros.criar_cargo(
                 conexao, bd_id, _inteiro(dados, "empresa_id"), _texto(dados, "nome"), nivel
             )
-        )
+        ),
     )
     if valor:
-        _guardar(lambda: cadastros.definir_tarifa(conexao, bd_id, cargo_id[0], centavos, inicio))
+        _guardar(
+            conexao, lambda: cadastros.definir_tarifa(conexao, bd_id, cargo_id[0], centavos, inicio)
+        )
     return "cadastros.ok_salvo"
 
 
@@ -279,7 +292,7 @@ def _definir(tabela: str, coluna: str, campo: str, validos: tuple[str, ...] | No
                 raise ErroCadastro("cadastros.erro_campo_obrigatorio")
         else:
             valor = _inteiro(dados, campo)
-        _guardar(lambda: edicao.definir(conexao, tabela, coluna, bd_id, registro, valor))
+        _guardar(conexao, lambda: edicao.definir(conexao, tabela, coluna, bd_id, registro, valor))
         return "cadastros.ok_salvo"
 
     return agir
@@ -292,14 +305,15 @@ def _editar_demanda(conexao, bd_id, dados, mes_atual):
     if tipo:
         if tipo not in TIPOS_DEMANDA:
             raise ErroCadastro("cadastros.erro_campo_obrigatorio")
-        _guardar(lambda: edicao.definir(conexao, "demanda", "tipo", bd_id, registro, tipo))
+        _guardar(conexao, lambda: edicao.definir(conexao, "demanda", "tipo", bd_id, registro, tipo))
     if iniciativa:
         if not iniciativa.isdigit():
             raise ErroCadastro("cadastros.erro_campo_obrigatorio")
         _guardar(
+            conexao,
             lambda: edicao.definir(
                 conexao, "demanda", "iniciativa_id", bd_id, registro, int(iniciativa)
-            )
+            ),
         )
     return "cadastros.ok_salvo"
 
@@ -322,9 +336,10 @@ def _tarifa(conexao, bd_id, dados, mes_atual):
     cargo = _inteiro(dados, "cargo_id")
     try:
         _guardar(
+            conexao,
             lambda: cadastros.definir_tarifa(
                 conexao, bd_id, cargo, valor, _mes(dados, "a_partir_de")
-            )
+            ),
         )
     except vigencia.VigenciaSobreposta as erro:
         raise ErroCadastro("cadastros.erro_vigencia", 409) from erro
@@ -343,12 +358,13 @@ def _corrigir_tarifa(conexao, bd_id, dados, mes_atual):
 
 
 def _fornecedor(conexao, bd_id, dados, mes_atual):
-    _guardar(lambda: portfolio.criar_fornecedor(conexao, bd_id, _texto(dados, "nome")))
+    _guardar(conexao, lambda: portfolio.criar_fornecedor(conexao, bd_id, _texto(dados, "nome")))
     return "cadastros.ok_salvo"
 
 
 def _vaga(conexao, bd_id, dados, mes_atual):
     _guardar(
+        conexao,
         lambda: pessoas.abrir_vaga(
             conexao,
             bd_id,
@@ -357,7 +373,7 @@ def _vaga(conexao, bd_id, dados, mes_atual):
             _inteiro(dados, "tema_id"),
             _inteiro(dados, "cargo_id"),
             _mes(dados, "aberta_em"),
-        )
+        ),
     )
     return "cadastros.ok_salvo"
 

@@ -63,7 +63,7 @@ def test_log_do_fechamento_mostra_o_valor_congelado(ambiente):
     pessoa = c.execute("SELECT id FROM pessoa").fetchone()[0]
     tema = c.execute("SELECT id FROM tema").fetchone()[0]
     c.execute(
-        "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (?, ?, ?, '2026-01', 100)",
+        "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (%s, %s, %s, '2026-01', 100)",
         (bd, pessoa, tema),
     )
     c.commit()

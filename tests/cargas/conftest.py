@@ -16,15 +16,15 @@ def base(conexao):
     usuario = acesso.criar_usuario(conexao, "ana@empresa.com", "Ana", senha.gerar_hash("x"))
     tribo = organizacao.criar_org(conexao, bd, "Tribo", "Tribo D&C", None, "G", "2025-01")
     squad = organizacao.criar_org(conexao, bd, "Squad", "Squad A", tribo, "G", "2025-01")
-    conexao.execute("UPDATE org SET codigo = 'o3' WHERE id = ?", (squad,))
+    conexao.execute("UPDATE org SET codigo = 'o3' WHERE id = %s", (squad,))
     propria = cadastros.criar_empresa(conexao, bd, "Própria", "propria")
     ntt = cadastros.criar_empresa(conexao, bd, "NTT", "consultoria")
-    conexao.execute("UPDATE empresa SET codigo = 'PROP' WHERE id = ?", (propria,))
-    conexao.execute("UPDATE empresa SET codigo = 'NTT' WHERE id = ?", (ntt,))
+    conexao.execute("UPDATE empresa SET codigo = 'PROP' WHERE id = %s", (propria,))
+    conexao.execute("UPDATE empresa SET codigo = 'NTT' WHERE id = %s", (ntt,))
     c5 = cadastros.criar_cargo(conexao, bd, propria, "Specialist II", "N11")
     c6 = cadastros.criar_cargo(conexao, bd, ntt, "Developer Pleno", "N8")
-    conexao.execute("UPDATE cargo SET codigo = 'c5' WHERE id = ?", (c5,))
-    conexao.execute("UPDATE cargo SET codigo = 'c6' WHERE id = ?", (c6,))
+    conexao.execute("UPDATE cargo SET codigo = 'c5' WHERE id = %s", (c5,))
+    conexao.execute("UPDATE cargo SET codigo = 'c6' WHERE id = %s", (c6,))
     cadastros.definir_tarifa(conexao, bd, c6, 12960, "2025-01")
     agrup = portfolio.criar_agrupamento(conexao, bd, "RTB")
     ini = portfolio.criar_iniciativa(conexao, bd, "I-01", "Alfa")
@@ -35,12 +35,12 @@ def base(conexao):
     forn = portfolio.criar_fornecedor(conexao, bd, "Fornecedor A")
     conexao.execute(
         "INSERT INTO compra (bd_id, numero, tipo, fornecedor_id, demanda_id, status)"
-        " VALUES (?, 'OC0001', 'OC', ?, ?, 'emitida')",
+        " VALUES (%s, 'OC0001', 'OC', %s, %s, 'emitida')",
         (bd, forn, dem),
     )
     conexao.execute(
         "INSERT INTO compra (bd_id, numero, tipo, demanda_id, status)"
-        " VALUES (?, 'OC0003', 'OC', ?, 'cancelada')",
+        " VALUES (%s, 'OC0003', 'OC', %s, 'cancelada')",
         (bd, dem),
     )
     conexao.commit()

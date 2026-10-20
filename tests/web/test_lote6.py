@@ -153,7 +153,7 @@ def test_calendario_mostra_mes_bloqueado_com_o_motivo(ambiente):
     pessoa = pessoas.listar_pessoas(c, bd)[0].id
     tema = portfolio.listar_temas(c, bd)[0].id
     c.execute(
-        "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (?, ?, ?, '2026-12', 10)",
+        "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (%s, %s, %s, '2026-12', 10)",
         (bd, pessoa, tema),
     )
     c.commit()

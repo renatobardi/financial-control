@@ -1,8 +1,5 @@
-import sqlite3
-
-import pytest
-
 from financeiro.store import acesso
+from tests.banco import recusa_do_banco
 
 
 def test_usuario_e_achado_por_email_sem_diferenciar_caixa(conexao):
@@ -17,7 +14,7 @@ def test_usuario_e_achado_por_email_sem_diferenciar_caixa(conexao):
 def test_email_repetido_e_recusado(conexao):
     acesso.criar_usuario(conexao, "ana@empresa.com", "Ana", "h")
 
-    with pytest.raises(sqlite3.IntegrityError):
+    with recusa_do_banco(conexao):
         acesso.criar_usuario(conexao, "ANA@empresa.com", "Outra", "h")
 
 
@@ -40,7 +37,7 @@ def test_papel_fora_de_admin_editor_leitor_e_recusado(conexao):
     bd = acesso.criar_bd(conexao, "BD", "B")
     ana = acesso.criar_usuario(conexao, "ana@empresa.com", "Ana", "h")
 
-    with pytest.raises(sqlite3.IntegrityError):
+    with recusa_do_banco(conexao):
         acesso.adicionar_membro(conexao, bd, ana, "Dono")
 
 
@@ -152,3 +149,11 @@ def test_perfil_senha_e_preferencias_sao_gravados(conexao):
         "Forecast",
         bd,
     )
+
+
+def test_email_nao_diferencia_maiusculas_na_busca_nem_na_unicidade(conexao):
+    acesso.criar_usuario(conexao, "Ana@Empresa.com", "Ana", "h")
+
+    assert acesso.achar_usuario_por_email(conexao, "ana@empresa.COM").nome == "Ana"
+    with recusa_do_banco(conexao):
+        acesso.criar_usuario(conexao, "ANA@EMPRESA.COM", "Outra Ana", "h")

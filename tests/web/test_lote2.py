@@ -20,10 +20,10 @@ def _preparar(ambiente, formato="mil"):
     cadastros.definir_markup(c, bd, 1000, "2026-01")
     for mes, horas in (("2026-01", 100), ("2026-02", 50)):
         c.execute(
-            "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO alocacao (bd_id, pessoa_id, tema_id, mes, horas) VALUES (%s, %s, %s, %s, %s)",
             (bd, pessoa, tema, mes, horas),
         )
-    c.execute("UPDATE usuario SET formato_valor = ?", (formato,))
+    c.execute("UPDATE usuario SET formato_valor = %s", (formato,))
     c.commit()
     entrar(ambiente)
     usuario = c.execute("SELECT id FROM usuario").fetchone()[0]

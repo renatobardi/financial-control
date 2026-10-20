@@ -83,7 +83,9 @@ def criar_bd_do_usuario(conexao: Conexao, usuario_id: int, nome: str) -> int:
         acesso.adicionar_membro(conexao, bd_id, usuario_id, "Admin", confirmar=False)
     except ErroDeIntegridade as erro:
         conexao.rollback()
-        if "bd.nome" in str(erro):  # outra criação chegou entre a checagem e o INSERT
+        if (
+            erro.diag.constraint_name == "bd_nome_key"
+        ):  # outra criação chegou entre a checagem e o INSERT
             raise NomeDeBdRepetido(nome) from erro
         raise
     conexao.commit()
@@ -100,11 +102,11 @@ def semear(conexao: Conexao, senha: str | None) -> None:
     acesso.adicionar_membro(conexao, bd, demo, "Admin")
     tribo = organizacao.criar_org(conexao, bd, "Tribo", "Tribo Exemplo", None, "Gestor", "2026-01")
     squad = organizacao.criar_org(conexao, bd, "Squad", "Squad Exemplo", tribo, "Gestor", "2026-01")
-    conexao.execute("UPDATE org SET codigo = 'o1' WHERE id = ?", (squad,))
+    conexao.execute("UPDATE org SET codigo = 'o1' WHERE id = %s", (squad,))
     empresa = cadastros.criar_empresa(conexao, bd, "Própria", "propria")
-    conexao.execute("UPDATE empresa SET codigo = 'PROP' WHERE id = ?", (empresa,))
+    conexao.execute("UPDATE empresa SET codigo = 'PROP' WHERE id = %s", (empresa,))
     cargo = cadastros.criar_cargo(conexao, bd, empresa, "Pleno", "N8")
-    conexao.execute("UPDATE cargo SET codigo = 'c1' WHERE id = ?", (cargo,))
+    conexao.execute("UPDATE cargo SET codigo = 'c1' WHERE id = %s", (cargo,))
     cadastros.definir_tarifa(conexao, bd, cargo, 12000, "2026-01")
     cadastros.definir_markup(conexao, bd, 1050, "2026-01")
     agrup = portfolio.criar_agrupamento(conexao, bd, "RTB")

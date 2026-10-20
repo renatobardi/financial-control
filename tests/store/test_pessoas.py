@@ -1,8 +1,7 @@
-import sqlite3
-
 import pytest
 
 from financeiro.store import acesso, cadastros, organizacao, pessoas, portfolio
+from tests.banco import recusa_do_banco
 
 
 @pytest.fixture
@@ -40,14 +39,14 @@ def test_matricula_repetida_no_bd_e_recusada(base):
     conexao, bd, squad, cargo, tema = base
     pessoas.criar_pessoa(conexao, bd, "F0101", "Ana", squad, cargo, tema, "2025-01", None)
 
-    with pytest.raises(sqlite3.IntegrityError):
+    with recusa_do_banco(conexao):
         pessoas.criar_pessoa(conexao, bd, "F0101", "Outra", squad, cargo, tema, "2025-02", None)
 
 
 def test_desligamento_antes_da_admissao_e_recusado(base):
     conexao, bd, squad, cargo, tema = base
 
-    with pytest.raises(sqlite3.IntegrityError):
+    with recusa_do_banco(conexao):
         pessoas.criar_pessoa(conexao, bd, "F0101", "Ana", squad, cargo, tema, "2025-06", "2025-05")
 
 
@@ -57,7 +56,7 @@ def test_pessoa_nao_liga_a_cargo_de_outro_bd(base):
     empresa = cadastros.criar_empresa(conexao, outro, "NTT", "consultoria")
     cargo_outro = cadastros.criar_cargo(conexao, outro, empresa, "Dev", "N8")
 
-    with pytest.raises(sqlite3.IntegrityError):
+    with recusa_do_banco(conexao):
         pessoas.criar_pessoa(conexao, bd, "F1", "Ana", squad, cargo_outro, tema, "2025-01", None)
 
 

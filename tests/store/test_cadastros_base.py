@@ -1,9 +1,8 @@
-import sqlite3
-
 import pytest
 
 from financeiro import vigencia
 from financeiro.store import acesso, cadastros
+from tests.banco import recusa_do_banco
 
 
 @pytest.fixture
@@ -14,9 +13,9 @@ def bd(conexao):
 def test_empresa_tem_tipo_e_nome_unico_por_bd(conexao, bd):
     cadastros.criar_empresa(conexao, bd, "Própria", "propria")
 
-    with pytest.raises(sqlite3.IntegrityError):
+    with recusa_do_banco(conexao):
         cadastros.criar_empresa(conexao, bd, "Própria", "consultoria")
-    with pytest.raises(sqlite3.IntegrityError):
+    with recusa_do_banco(conexao):
         cadastros.criar_empresa(conexao, bd, "NTT", "terceiro")
 
 
@@ -36,7 +35,7 @@ def test_cargo_com_nivel_valido_na_empresa(conexao, bd):
 
     achado = cadastros.achar_cargo(conexao, bd, cargo)
     assert (achado.nome, achado.nivel, achado.empresa) == ("Sênior", "N9", "Própria")
-    with pytest.raises(sqlite3.IntegrityError):
+    with recusa_do_banco(conexao):
         cadastros.criar_cargo(conexao, bd, empresa, "Mestre", "N13")
 
 
@@ -44,7 +43,7 @@ def test_cargo_nao_aceita_empresa_de_outro_bd(conexao, bd):
     outro = acesso.criar_bd(conexao, "Outro", "OT")
     empresa_outro = cadastros.criar_empresa(conexao, outro, "NTT", "consultoria")
 
-    with pytest.raises(sqlite3.IntegrityError):
+    with recusa_do_banco(conexao):
         cadastros.criar_cargo(conexao, bd, empresa_outro, "Dev", "N8")
 
 
@@ -91,10 +90,10 @@ def test_banco_recusa_vigencias_sobrepostas_mesmo_por_fora_do_store(conexao, bd)
     cargo = _cargo(conexao, bd)
     cadastros.definir_tarifa(conexao, bd, cargo, 12960, "2025-01")
 
-    with pytest.raises(sqlite3.IntegrityError):
+    with recusa_do_banco(conexao):
         conexao.execute(
             "INSERT INTO tarifa (bd_id, cargo_id, liquida_centavos, vigencia_ini, vigencia_fim)"
-            " VALUES (?, ?, 1, '2025-06', '2025-08')",
+            " VALUES (%s, %s, 1, '2025-06', '2025-08')",
             (bd, cargo),
         )
 
@@ -126,3 +125,13 @@ def test_mes_de_vigencia_invalido_e_recusado(conexao, bd):
 
     with pytest.raises(ValueError):
         cadastros.definir_tarifa(conexao, bd, cargo, 100, "2026-13")
+
+
+def test_tarifa_aceita_valor_acima_de_2_elevado_a_31_centavos(conexao, bd):
+    empresa = cadastros.criar_empresa(conexao, bd, "Própria", "propria")
+    cargo = cadastros.criar_cargo(conexao, bd, empresa, "Dev", "N8")
+    grande = 3_000_000_000  # R$ 30 mi: estoura o INTEGER de 32 bits do Postgres
+
+    cadastros.definir_tarifa(conexao, bd, cargo, grande, "2026-01")
+
+    assert cadastros.tarifas_do_cargo(conexao, bd, cargo)[0].liquida_centavos == grande
