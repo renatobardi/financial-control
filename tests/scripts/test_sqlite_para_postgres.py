@@ -24,9 +24,10 @@ def origem():
         CREATE TABLE bd (id INTEGER PRIMARY KEY, nome TEXT NOT NULL UNIQUE, sigla TEXT NOT NULL,
                          gestor TEXT NOT NULL DEFAULT '', onboarding_aberto INTEGER NOT NULL DEFAULT 0);
         CREATE TABLE org (id INTEGER PRIMARY KEY, bd_id INTEGER NOT NULL REFERENCES bd (id),
-                          tipo TEXT NOT NULL, nome TEXT NOT NULL, pai_id INTEGER REFERENCES org (id),
+                          tipo TEXT NOT NULL, nome TEXT NOT NULL, pai_id INTEGER,
                           gestor TEXT NOT NULL DEFAULT '', vigencia_ini TEXT NOT NULL,
-                          vigencia_fim TEXT, codigo TEXT);
+                          vigencia_fim TEXT, codigo TEXT, UNIQUE (bd_id, id),
+                          FOREIGN KEY (bd_id, pai_id) REFERENCES org (bd_id, id));
         CREATE TABLE empresa (id INTEGER PRIMARY KEY, bd_id INTEGER NOT NULL REFERENCES bd (id),
                               nome TEXT NOT NULL, tipo TEXT NOT NULL, codigo TEXT);
         CREATE TABLE cargo (id INTEGER PRIMARY KEY, bd_id INTEGER NOT NULL REFERENCES bd (id),

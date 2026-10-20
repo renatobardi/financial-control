@@ -68,11 +68,15 @@ def _colunas_comuns(
 
 
 def _autorreferencias(origem: sqlite3.Connection, tabela: str) -> list[str]:
-    """Colunas desta tabela que apontam para ela mesma (ex.: org.pai_id)."""
+    """Colunas que apontam para o `id` da própria tabela (ex.: org.pai_id).
+
+    Numa chave composta como (bd_id, pai_id) → (bd_id, id), só `pai_id` conta: `bd_id` aponta para
+    a coluna `bd_id` da mesma tabela, que nunca depende de outra linha.
+    """
     return [
         linha[3]
         for linha in origem.execute(f"PRAGMA foreign_key_list({tabela})")
-        if linha[2] == tabela
+        if linha[2] == tabela and linha[4] == "id"
     ]
 
 
