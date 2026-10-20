@@ -1,6 +1,6 @@
 # Stack: Python, FastAPI, HTML no servidor com HTMX, SQLite e Tailwind standalone
 
-- **Estado:** aceito
+- **Estado:** aceito; o banco (SQLite) foi substituído pelo Postgres no [ADR-0004](0004-postgres-do-oute-supabase-db.md)
 - **Data:** 2026-10-10
 
 O app usa o mesmo stack do [frentes-engenharia](https://github.com/renatobardi/frentes-engenharia/blob/main/docs/adr/0001-stack.md): Python 3.12 com `uv`, FastAPI com um worker, Jinja2 com HTMX, SQLite da biblioteca padrão em modo WAL e sem ORM, com todo o SQL em `store/`. O volume é pequeno (no máximo 6 usuários, cerca de 200 pessoas por mês, 30 temas, 20 demandas, 10 iniciativas e 20 cenários), então um arquivo SQLite e um processo bastam.

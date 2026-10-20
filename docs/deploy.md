@@ -7,8 +7,8 @@ dele, e nenhum segredo entra em arquivo, comando, issue ou PR.
 
 ## O que vai ao ar
 
-Um serviço (`app`) e um volume (`dados`), pelo `docker-compose.yml`, dentro do LXC
-`financial-control-prd`. O SQLite fica em `/data/financeiro.db`, no volume. O compose publica a
+Um serviço (`app`), pelo `docker-compose.yml`, dentro do LXC
+`financial-control-prd`. O banco é o Postgres do `oute-supabase-db` (schema `financial_control_prd`, ADR-0004), fora do LXC. O compose publica a
 porta em `FINANCEIRO_PUBLICAR` (o endereço e a porta que o `lab` aloca), nunca em `0.0.0.0`.
 Primeiro só na tailnet; internet e TLS pelo nginx do host entram numa segunda etapa.
 
@@ -17,6 +17,7 @@ Primeiro só na tailnet; internet e TLS pelo nginx do host entram numa segunda e
 | Segredo | Onde fica | Como chega ao app |
 |---|---|---|
 | `FINANCEIRO_SEGREDO` (assina o cookie de sessão) | Vaultwarden, item `financial-control-prd FINANCEIRO_SEGREDO` (o Bardi cria) | `/opt/app/.env` no LXC, root, `0600`, entregue por stdin pelo auxiliar interativo do `lab` |
+| `FINANCEIRO_DATABASE_URL` (URL do Postgres com a senha da role `app_financial_control_prd`) | Vaultwarden, item `oute-supabase-db/financial_control_prd/app_financial_control_prd` | `/opt/app/.env` no LXC, root, `0600`, pelo auxiliar de segredos do `lab` |
 | Senha do primeiro Admin | Não fica em arquivo: o `criar-admin` pergunta no terminal, sem eco | Só no hash scrypt do banco |
 | Chave de deploy do repositório (privado) | Nasce dentro do LXC; só a metade pública sai | Registrada pelo Bardi como chave **só de leitura** em Settings → Deploy keys |
 
@@ -43,15 +44,8 @@ Sem `FINANCEIRO_SEGREDO` o app sobe e as sessões caem a cada reinício.
    ```
 
    Repetir não muda a senha nem duplica.
-6. **Backup**: o SQLite é copiado com `.backup`, não copiando o arquivo com o app escrevendo:
-
-   ```bash
-   docker compose exec app mkdir -p /data/backup
-   docker compose exec app /app/.venv/bin/python -m financeiro backup --destino /data/backup/AAAA-MM-DD.db
-   ```
-
-   O comando não sobrescreve arquivo existente. A estratégia no inventário do host precisa incluir
-   o volume do LXC.
+6. **Backup**: não é do app. O `lab` faz o `pg_dump` do `oute-supabase-db` (schema inteiro, com donos
+   e grants) no restic, semanal e mensal (`docs/backup.md` do `lab`). O restore está testado.
 7. **nginx e TLS** (segunda etapa, no `lab`): vhost, certificado do `certbot` e, se for o caso, a
    exposição na internet.
 
@@ -62,13 +56,13 @@ Sem `FINANCEIRO_SEGREDO` o app sobe e as sessões caem a cada reinício.
 
 - `GET /healthz` devolve `{"commit": "<sha da release>", "esquema": <n>}`.
 - Rota sem sessão devolve 401 (ou leva ao login) e nenhuma devolve dado.
-- Restaurar um backup num arquivo de teste e conferir:
-  `sqlite3 teste.db "PRAGMA integrity_check"` devolve `ok`.
+- O app fala com `10.173.117.51:5433` como `app_financial_control_prd` (e não vê outro schema).
 - O banco de produção não tem usuário nem dado da semente: `semear` recusa banco com usuário e
   **não** roda em produção.
 
 ## Reverter
 
-O volume fica. Para voltar uma versão, rode `scripts/deploy.sh <sha anterior>` pelo canal. Migrações
-só avançam: se a versão nova aplicou uma migração, o `.antes-da-NNNN` ao lado do banco é a cópia de
-antes dela.
+Para voltar uma versão de código, rode `scripts/deploy.sh <sha anterior>` pelo canal. Migrações só
+avançam (DDL transacional: uma migração com defeito não aplica nada). **Não há volta para o SQLite**
+(ADR-0004): o que está no Postgres é a fonte. Dado errado se corrige para a frente, ou se restaura do
+dump do `lab` (restore num schema descartável, conferir, depois aplicar).
