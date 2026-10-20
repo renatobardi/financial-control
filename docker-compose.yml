@@ -1,23 +1,28 @@
-# Um serviço, um volume. O mesmo arquivo sobe no LXC do oute-server e na máquina de desenvolvimento.
+# Um serviço. O mesmo arquivo sobe no LXC do oute-server e na máquina de desenvolvimento.
+# O banco é o Postgres do oute-supabase-db (ADR-0004): em produção, FINANCEIRO_DATABASE_URL vem do .env.
 services:
   app:
     build:
       context: .
       args:
         FINANCEIRO_COMMIT: ${FINANCEIRO_COMMIT:-desconhecido}
-    # O segredo do cookie vem do .env (root, 0600, fora do git). Sem ele o app sobe e as sessões
-    # caem a cada reinício. A senha do primeiro Admin NÃO vai aqui: o criar-admin pergunta no terminal.
+    # O .env (root, 0600, fora do git) traz FINANCEIRO_SEGREDO (assina o cookie de sessão; sem ele as
+    # sessões caem a cada reinício) e FINANCEIRO_DATABASE_URL (a senha da role do app, do cofre).
+    # A senha do primeiro Admin NÃO vai aqui: o criar-admin pergunta no terminal.
     env_file:
       - path: .env
         required: false
-    environment:
-      FINANCEIRO_BD: /data/financeiro.db
     # Só a própria máquina por padrão. Atrás do nginx do host, o TLS fica no nginx.
     ports:
       - "${FINANCEIRO_PUBLICAR:-127.0.0.1:8000}:8000"
-    volumes:
-      - dados:/data
     restart: unless-stopped
 
-volumes:
-  dados:
+  # Só desenvolvimento e testes: `docker compose --profile dev up -d db` (ou `make db`).
+  # Em produção o banco é o do oute-supabase-db, nunca este.
+  db:
+    profiles: [dev]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: teste
+    ports:
+      - "127.0.0.1:55439:5432"
