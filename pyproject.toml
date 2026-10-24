@@ -59,8 +59,6 @@ select = ["E", "F", "W", "I", "UP", "B", "TID251"]
 "financeiro/config.py" = ["TID251"]
 # O Postgres dos testes vem do ambiente (tests/banco.py), como a URL do banco vem em config.py.
 "tests/banco.py" = ["TID251"]
-# Script único do cutover da #68 (SQLite → Postgres): sai na limpeza, junto com esta exceção.
-"scripts/sqlite_para_postgres.py" = ["TID251"]
 "financeiro/store/**" = ["TID251"]
 # Teste de fumaça do store abre o banco direto para conferir o resultado de fora.
 "tests/store/**" = ["TID251"]
